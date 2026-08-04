@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1">
+<title>監造工地筆記</title>
+<meta name="description" content="工地現場記錄與經驗庫：專案導向 + 類型導向">
+<link rel="manifest" href="manifest.webmanifest">
+<meta name="theme-color" content="#12161c">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="工地筆記">
+<link rel="apple-touch-icon" href="icons/icon-180.png">
+<link rel="icon" href="icons/icon-192.png">
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+<header id="topbar">
+  <button id="btn-back" class="icon-btn" hidden aria-label="返回">‹</button>
+  <h1 id="title">監造工地筆記</h1>
+  <span id="tier-badge" class="tier tier-off" title="Gemini 方案">未設定</span>
+</header>
+
+<main id="view" aria-live="polite">
+  <div class="loading">載入中…</div>
+</main>
+
+<nav id="tabbar">
+  <a href="#/" data-tab="projects"><span>🏗️</span>專案</a>
+  <a href="#/lib" data-tab="lib"><span>📚</span>經驗庫</a>
+  <a href="#/settings" data-tab="settings"><span>⚙️</span>設定</a>
+</nav>
+
+<div id="toast" role="status"></div>
+
+<dialog id="confirm-dialog">
+  <form method="dialog">
+    <h2 id="confirm-title"></h2>
+    <div id="confirm-body"></div>
+    <menu>
+      <button value="cancel" class="btn ghost">取消</button>
+      <button value="ok" class="btn danger" id="confirm-ok">確定</button>
+    </menu>
+  </form>
+</dialog>
+
+<script type="module" src="js/app.js"></script>
+</body>
+</html>
