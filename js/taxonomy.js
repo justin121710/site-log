@@ -102,15 +102,27 @@ export const CATEGORIES = [
   },
 ];
 
-export const CATEGORY_BY_ID = Object.fromEntries(CATEGORIES.map((c) => [c.id, c]));
+/** 內建那 14 項不能刪，刪掉會讓已經記過的東西變成孤兒。 */
+export const BUILTIN_IDS = new Set(CATEGORIES.map((c) => c.id));
+
+// CATEGORIES 是「內建 + 使用者自訂」的合併結果，開機時由 initTaxonomy() 就地補上自訂項。
+// 用就地修改而不是重新指派，是為了讓各個 view 直接 import 這個陣列就好，不必到處傳來傳去。
+
+export function categoryById(id) {
+  return CATEGORIES.find((c) => c.id === id) ?? null;
+}
 
 export function categoryName(id) {
-  return CATEGORY_BY_ID[id]?.name ?? id;
+  return categoryById(id)?.name ?? id;
 }
 
 /** 回傳 js/icons.js 的 icon 名稱。 */
 export function categoryIcon(id) {
-  return CATEGORY_BY_ID[id]?.icon ?? 'note';
+  return categoryById(id)?.icon ?? 'note';
+}
+
+export function isCustomCategory(id) {
+  return !BUILTIN_IDS.has(id);
 }
 
 /** 給 AI 用的分類清單，只給 id 與名稱，避免它自己發明分類。 */
@@ -121,4 +133,73 @@ export function taxonomyForPrompt() {
 /** 初始子項表：{ categoryId: [subtag, ...] }，之後使用者可增刪，存在 settings。 */
 export function seedSubtags() {
   return Object.fromEntries(CATEGORIES.map((c) => [c.id, [...c.seedSubtags]]));
+}
+
+// ---------- 自訂分類 ----------
+
+/** 開機時呼叫一次。把使用者自訂的一級分類接在內建 14 項後面。 */
+export async function initTaxonomy() {
+  const { getSetting } = await import('./db.js');
+  const custom = await getSetting('customCategories', []);
+  CATEGORIES.length = BUILTIN_IDS.size; // 重載時先砍掉舊的自訂項，避免重複
+  for (const c of custom) {
+    CATEGORIES.push({ seedSubtags: [], ...c });
+  }
+  return CATEGORIES;
+}
+
+async function persistCustom() {
+  const { setSetting } = await import('./db.js');
+  const custom = CATEGORIES.filter((c) => isCustomCategory(c.id))
+    .map(({ id, name, icon }) => ({ id, name, icon }));
+  await setSetting('customCategories', custom);
+}
+
+/** @returns {{id: string, name: string, icon: string}} 新增的分類 */
+export async function addCategory({ name, icon = 'note' }) {
+  const trimmed = name.trim();
+  if (!trimmed) throw new Error('分類名稱不能空白');
+  if (CATEGORIES.some((c) => c.name === trimmed)) throw new Error(`已經有一個叫「${trimmed}」的分類了`);
+
+  const { uid } = await import('./db.js');
+  const cat = { id: uid('cat_'), name: trimmed, icon, seedSubtags: [] };
+  CATEGORIES.push(cat);
+  await persistCustom();
+  return cat;
+}
+
+export async function renameCategory(id, name) {
+  const cat = categoryById(id);
+  if (!cat || !isCustomCategory(id)) throw new Error('內建分類不能改名');
+  cat.name = name.trim() || cat.name;
+  await persistCustom();
+  return cat;
+}
+
+/**
+ * 刪掉一個自訂分類，並把所有記錄上的這個標記一起拿掉，
+ * 不然那些記錄會掛著一個查不到名字的分類 id。
+ * @returns {number} 受影響的記錄筆數
+ */
+export async function removeCategory(id) {
+  if (!isCustomCategory(id)) throw new Error('內建的 14 項分類不能刪');
+
+  const db = await import('./db.js');
+  const affected = await db.listEntriesByCategory(id);
+  for (const e of affected) {
+    e.categoryIds = e.categoryIds.filter((c) => c !== id);
+    await db.saveEntry(e);
+  }
+
+  const i = CATEGORIES.findIndex((c) => c.id === id);
+  if (i >= 0) CATEGORIES.splice(i, 1);
+
+  const subtags = await db.getSetting('subtags', null);
+  if (subtags && subtags[id]) {
+    delete subtags[id];
+    await db.setSetting('subtags', subtags);
+  }
+
+  await persistCustom();
+  return affected.length;
 }

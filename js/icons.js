@@ -114,3 +114,10 @@ export function icon(name, opts = {}) {
 export function hasIcon(name) {
   return Object.hasOwn(SHAPES, name);
 }
+
+/** 新增自訂分類時可以挑的圖示。動作類的（拍照、錄音…）不放進來，語意會打架。 */
+export const PICKABLE_ICONS = [
+  'note', 'fence', 'tripod', 'pile', 'rebar', 'formwork', 'slump', 'ibeam',
+  'facade', 'droplet', 'pipe', 'roller', 'crate', 'hardhat', 'warning',
+  'building', 'layers', 'waveform', 'image', 'sliders',
+];

@@ -3,6 +3,7 @@
 import { el, toast, setTitle } from './ui.js';
 import { getSetting, requestPersistence } from './db.js';
 import { icon } from './icons.js';
+import { initTaxonomy } from './taxonomy.js';
 
 const view = document.getElementById('view');
 const backBtn = document.getElementById('btn-back');
@@ -121,6 +122,7 @@ function paintChromeIcons() {
 (async function boot() {
   setTitle('監造工地筆記');
   paintChromeIcons();
+  await initTaxonomy(); // 自訂分類要在任何頁面渲染之前就位
   await refreshTierBadge();
   requestPersistence().catch(() => {});
 

@@ -1,12 +1,15 @@
 // 經驗庫的單一分類：跨專案列出同一類的記錄，可以只看已確認的。
 
-import { el, setTitle, fmtDate, fmtTime } from '../ui.js';
-import { listEntriesByCategory, listProjects, listMedia, getSetting, setSetting } from '../db.js';
-import { CATEGORY_BY_ID } from '../taxonomy.js';
+import { el, setTitle, fmtDate, fmtTime, toast, today, confirmDialog } from '../ui.js';
+import {
+  listEntriesByCategory, listProjects, listMedia, getSetting, setSetting,
+  newEntry, saveEntry,
+} from '../db.js';
+import { categoryById, isCustomCategory, removeCategory } from '../taxonomy.js';
 import { icon } from '../icons.js';
 
 export default async function category({ catId }) {
-  const cat = CATEGORY_BY_ID[catId];
+  const cat = categoryById(catId);
   if (!cat) throw new Error('沒有這個分類');
   setTitle(cat.name);
 
@@ -77,14 +80,17 @@ export default async function category({ catId }) {
     // 依專案分組，這樣 A 案場和 B 案場的做法可以直接對照
     const byProject = new Map();
     for (const e of rows) {
-      if (!byProject.has(e.projectId)) byProject.set(e.projectId, []);
-      byProject.get(e.projectId).push(e);
+      const key = e.projectId || '';
+      if (!byProject.has(key)) byProject.set(key, []);
+      byProject.get(key).push(e);
     }
 
     for (const [pid, group] of byProject) {
       const p = projects[pid];
+      const label = !pid ? '未歸專案（直接記在經驗庫）'
+        : p?.name || '（已刪除的專案）';
       list.append(el('h3', { style: 'margin:18px 0 8px;font-size:14px' }, [
-        el('span', { text: p?.name || '（已刪除的專案）' }),
+        el('span', { text: label }),
         el('span', { class: 'muted', text: `　${group.length} 筆` }),
       ]));
 
@@ -134,15 +140,52 @@ export default async function category({ catId }) {
     }
   }
 
+  // 在這裡直接開一筆記錄，不綁任何專案。用在「這件事我想記進經驗庫，
+  // 但它不屬於我手上任何一個案子」——例如在別的工地看到的做法。
+  const addBtn = el('button', { class: 'btn block', type: 'button', style: 'margin-bottom:12px' },
+    [icon('plus'), `在「${cat.name}」新增一筆`]);
+  addBtn.addEventListener('click', async () => {
+    const e = newEntry(null, today());
+    e.categoryIds = [catId];
+    await saveEntry(e);
+    location.hash = `#/e/${e.id}`;
+  });
+
   renderFilters();
   await renderList();
+
   wrap.append(
     el('div', { class: 'row', style: 'gap:9px;margin-bottom:12px;color:var(--accent)' }, [
       icon(cat.icon, { size: 26 }),
       el('strong', { text: cat.name, style: 'font-size:18px' }),
     ]),
+    addBtn,
     filterBar,
     list,
   );
+
+  if (isCustomCategory(catId)) {
+    const del = el('button', {
+      class: 'btn ghost block',
+      type: 'button',
+      text: '刪除這個分類',
+      style: 'margin-top:20px;color:var(--danger)',
+    });
+    del.addEventListener('click', async () => {
+      const ok = await confirmDialog({
+        title: `刪除「${cat.name}」？`,
+        body: all.length
+          ? `有 ${all.length} 筆記錄標了這個分類。記錄本身不會被刪，只會拿掉這個標記。`
+          : '這個分類底下沒有記錄。',
+        okLabel: '刪除分類',
+      });
+      if (!ok) return;
+      const n = await removeCategory(catId);
+      toast(n ? `已刪除，${n} 筆記錄的標記一併移除` : '已刪除');
+      location.hash = '#/lib';
+    });
+    wrap.append(del);
+  }
+
   return wrap;
 }

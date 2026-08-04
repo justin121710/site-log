@@ -38,6 +38,10 @@
 
 * { box-sizing: border-box; }
 
+/* 必須在所有元件規則之前也之上：底下有些元件用了 display:flex，
+   那會蓋掉瀏覽器預設的 [hidden] { display:none }，導致該藏的東西還是看得到。 */
+[hidden] { display: none !important; }
+
 html, body {
   margin: 0;
   padding: 0;

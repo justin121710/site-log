@@ -8,7 +8,7 @@ import {
 } from '../ui.js';
 import {
   get, getSetting, newEntry, saveEntry, deleteEntry, addMedia, listMedia,
-  deleteMedia, setSetting,
+  deleteMedia, setSetting, listProjects,
 } from '../db.js';
 import { CATEGORIES, categoryName, seedSubtags } from '../taxonomy.js';
 import {
@@ -30,8 +30,8 @@ export default async function entryView(params) {
     : await get('entries', params.entryId);
   if (!e) throw new Error('找不到這筆記錄');
 
-  const project = await get('projects', e.projectId);
-  if (!project) throw new Error('找不到這筆記錄的專案');
+  // 從經驗庫直接建的記錄沒有專案，這是刻意允許的，不能當成錯誤。
+  let project = e.projectId ? await get('projects', e.projectId) : null;
 
   setTitle(isNew ? '新增記錄' : fmtDate(e.date));
 
@@ -362,6 +362,28 @@ export default async function entryView(params) {
   }
   renderCats();
 
+  // ---------- 歸屬專案 ----------
+  const projectSel = el('select');
+  projectSel.append(el('option', { value: '' }, '未歸專案（只進經驗庫）'));
+  for (const p of await listProjects()) {
+    projectSel.append(el('option', { value: p.id, selected: p.id === e.projectId },
+      p.name || '（未命名專案）'));
+  }
+  projectSel.addEventListener('change', async () => {
+    e.projectId = projectSel.value || null;
+    project = e.projectId ? await get('projects', e.projectId) : null;
+    await saveEntry(e);
+    toast(e.projectId ? '已掛到這個專案，會進它的日報' : '已改成未歸專案，不會進任何日報');
+  });
+
+  wrap.append(el('div', { class: 'card' }, [
+    el('h2', { text: '歸屬專案' }),
+    el('p', { class: 'muted', style: 'margin:-4px 0 10px' },
+      '沒有專案也可以記——它一樣會出現在經驗庫，只是不會被算進任何一天的監造日報。'
+      + '之後想掛到某個案子，隨時在這裡改。'),
+    projectSel,
+  ]));
+
   wrap.append(el('div', { class: 'card' }, [
     el('h2', { text: '位置' }),
     el('div', { class: 'grid2' }, [
@@ -388,12 +410,18 @@ export default async function entryView(params) {
   wrap.append(el('div', { class: 'card' }, [el('h2', { text: '備註' }), noteBox]));
 
   // ---------- 底部 ----------
+  /** 回到來的地方：有專案就回那天，沒有就回經驗庫的分類頁。 */
+  const backTarget = () => {
+    if (e.projectId) return `#/p/${e.projectId}/day/${e.date}`;
+    return e.categoryIds.length ? `#/lib/${e.categoryIds[0]}` : '#/lib';
+  };
+
   const done = el('button', { class: 'btn block', type: 'button', text: '完成' });
   done.addEventListener('click', async () => {
     flushActiveInput();
     if (recorder.recording) { toast('還在錄音，先按停止'); return; }
     await saveEntry(e);
-    location.hash = `#/p/${e.projectId}/day/${e.date}`;
+    location.hash = backTarget();
   });
   wrap.append(done);
 
@@ -410,9 +438,10 @@ export default async function entryView(params) {
       okLabel: '刪除',
     })) return;
     recorder.cancel();
+    const target = backTarget();
     await deleteEntry(e.id);
     toast('已刪除');
-    location.hash = `#/p/${e.projectId}/day/${e.date}`;
+    location.hash = target;
   });
   wrap.append(rm);
 
