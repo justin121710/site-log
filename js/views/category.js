@@ -3,11 +3,12 @@
 import { el, setTitle, fmtDate, fmtTime } from '../ui.js';
 import { listEntriesByCategory, listProjects, listMedia, getSetting, setSetting } from '../db.js';
 import { CATEGORY_BY_ID } from '../taxonomy.js';
+import { icon } from '../icons.js';
 
 export default async function category({ catId }) {
   const cat = CATEGORY_BY_ID[catId];
   if (!cat) throw new Error('沒有這個分類');
-  setTitle(`${cat.icon} ${cat.name}`);
+  setTitle(cat.name);
 
   const wrap = el('div');
   const all = await listEntriesByCategory(catId);
@@ -92,8 +93,8 @@ export default async function category({ catId }) {
         const photo = media.find((m) => m.kind === 'photo');
 
         const thumb = el('div', {
-          style: 'width:72px;height:72px;flex:none;border-radius:10px;overflow:hidden;'
-            + 'background:var(--surface-2);display:flex;align-items:center;justify-content:center;font-size:26px',
+          style: 'width:72px;height:72px;flex:none;border-radius:10px;overflow:hidden;color:var(--text-dim);'
+            + 'background:var(--surface-2);display:flex;align-items:center;justify-content:center',
         });
         if (photo) {
           const url = URL.createObjectURL(photo.blob);
@@ -101,7 +102,7 @@ export default async function category({ catId }) {
           img.addEventListener('load', () => URL.revokeObjectURL(url), { once: true });
           thumb.append(img);
         } else {
-          thumb.textContent = '📝';
+          thumb.append(icon('note', { size: 28 }));
         }
 
         const place = [e.floor, e.gridline, e.area].filter(Boolean).join(' · ');
@@ -135,6 +136,13 @@ export default async function category({ catId }) {
 
   renderFilters();
   await renderList();
-  wrap.append(filterBar, list);
+  wrap.append(
+    el('div', { class: 'row', style: 'gap:9px;margin-bottom:12px;color:var(--accent)' }, [
+      icon(cat.icon, { size: 26 }),
+      el('strong', { text: cat.name, style: 'font-size:18px' }),
+    ]),
+    filterBar,
+    list,
+  );
   return wrap;
 }

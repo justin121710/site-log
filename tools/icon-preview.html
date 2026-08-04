@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<title>icon 預覽</title>
+<style>
+  body { background: #12161c; color: #eef1f5; font: 15px/1.5 "Noto Sans TC", sans-serif; padding: 24px; margin: 0; }
+  h2 { font-size: 14px; color: #99a3b2; margin: 26px 0 10px; font-weight: 600; }
+  .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 14px; }
+  .cell { background: #1b212a; border: 1px solid #333d4a; border-radius: 12px; padding: 14px 10px; text-align: center; }
+  .big { color: #ff9d4d; display: flex; justify-content: center; margin-bottom: 10px; }
+  .small { color: #eef1f5; display: flex; justify-content: center; gap: 12px; align-items: flex-end; margin-bottom: 8px; }
+  .name { font-size: 12px; color: #99a3b2; word-break: break-all; }
+</style>
+</head>
+<body>
+<h1 style="font-size:17px;margin:0">icon 預覽（開發用，不在 App 裡）</h1>
+<div id="out"></div>
+<script type="module">
+import { icon } from '../js/icons.js';
+import { CATEGORIES } from '../js/taxonomy.js';
+
+const out = document.getElementById('out');
+
+function section(title, items) {
+  const h = document.createElement('h2');
+  h.textContent = title;
+  const g = document.createElement('div');
+  g.className = 'grid';
+  for (const { name, label } of items) {
+    const cell = document.createElement('div');
+    cell.className = 'cell';
+    const big = document.createElement('div');
+    big.className = 'big';
+    big.append(icon(name, { size: 56 }));
+    const small = document.createElement('div');
+    small.className = 'small';
+    small.append(icon(name, { size: 24 }), icon(name, { size: 17 }), icon(name, { size: 15 }));
+    const n = document.createElement('div');
+    n.className = 'name';
+    n.textContent = label ? `${label} · ${name}` : name;
+    cell.append(big, small, n);
+    g.append(cell);
+  }
+  out.append(h, g);
+}
+
+section('工項分類（14）', CATEGORIES.map((c) => ({ name: c.icon, label: c.name })));
+section('導覽', [
+  { name: 'building', label: '專案' },
+  { name: 'layers', label: '經驗庫' },
+  { name: 'sliders', label: '設定' },
+  { name: 'chevronLeft', label: '返回' },
+]);
+section('動作', [
+  { name: 'camera', label: '拍照' },
+  { name: 'image', label: '相簿' },
+  { name: 'mic', label: '錄音' },
+  { name: 'stop', label: '停止' },
+  { name: 'importFile', label: '匯入' },
+  { name: 'sparkle', label: 'AI' },
+  { name: 'note', label: '文字記錄' },
+  { name: 'waveform', label: '音訊' },
+  { name: 'plus', label: '新增' },
+  { name: 'close', label: '刪除' },
+]);
+</script>
+</body>
+</html>

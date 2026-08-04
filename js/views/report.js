@@ -8,6 +8,7 @@ import { get, listEntries, getOrCreateDay, getReport, saveReport, reportId, getS
 import { REPORT_SECTIONS, makeReport } from '../gemini.js';
 import { confirmUpload } from '../confirm-upload.js';
 import { buildMaterial, renderReportText } from '../report-template.js';
+import { icon } from '../icons.js';
 import { revertAliases, getAliases } from '../redact.js';
 
 export default async function report({ projectId, date }) {
@@ -67,7 +68,9 @@ export default async function report({ projectId, date }) {
   ]));
 
   // ---------- 產生 ----------
-  const genBtn = el('button', { class: 'btn block', type: 'button', text: '✨ 從今天的記錄產生日報' });
+  const genBtn = el('button', { class: 'btn block', type: 'button' }, [icon('sparkle'), '從今天的記錄產生日報']);
+  const setGenLabel = (busy) => genBtn.replaceChildren(
+    icon('sparkle'), busy ? '整理中…' : '從今天的記錄產生日報');
   genBtn.addEventListener('click', async () => {
     flushActiveInput();
     const hasContent = Object.values(boxes).some((b) => b.value.trim()) || freeBox.value.trim();
@@ -86,7 +89,7 @@ export default async function report({ projectId, date }) {
     if (toSend === null) return;
 
     genBtn.disabled = true;
-    genBtn.textContent = '整理中…';
+    setGenLabel(true);
     try {
       const out = await makeReport(toSend);
       for (const s of REPORT_SECTIONS) boxes[s.key].value = revertAliases(out[s.key] || '', aliases);
@@ -97,7 +100,7 @@ export default async function report({ projectId, date }) {
       toast(err.message, 5000);
     } finally {
       genBtn.disabled = false;
-      genBtn.textContent = '✨ 從今天的記錄產生日報';
+      setGenLabel(false);
     }
   });
 

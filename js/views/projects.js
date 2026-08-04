@@ -2,6 +2,7 @@
 
 import { el, setTitle, fmtDate, today } from '../ui.js';
 import { listProjects, countByIndex } from '../db.js';
+import { icon } from '../icons.js';
 
 export default async function projects() {
   setTitle('專案');
@@ -9,7 +10,8 @@ export default async function projects() {
   const wrap = el('div');
 
   wrap.append(
-    el('a', { href: '#/p/new/edit', class: 'btn block', text: '＋ 新增專案', style: 'margin-bottom:14px' })
+    el('a', { href: '#/p/new/edit', class: 'btn block', style: 'margin-bottom:14px' },
+      [icon('plus'), '新增專案'])
   );
 
   if (!rows.length) {

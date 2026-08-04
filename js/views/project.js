@@ -3,6 +3,7 @@
 import { el, setTitle, fmtDate, fmtTime, today } from '../ui.js';
 import { get, listEntries } from '../db.js';
 import { categoryIcon } from '../taxonomy.js';
+import { icon } from '../icons.js';
 
 export default async function project({ projectId }) {
   const p = await get('projects', projectId);
@@ -18,9 +19,8 @@ export default async function project({ projectId }) {
   wrap.append(el('a', {
     href: `#/p/${p.id}/new`,
     class: 'btn block',
-    text: '＋ 新增記錄',
     style: 'margin-bottom:12px',
-  }));
+  }, [icon('plus'), '新增記錄']));
 
   wrap.append(el('div', { class: 'row wrap', style: 'gap:8px;margin-bottom:14px' }, [
     el('a', { href: `#/p/${p.id}/day/${t}`, class: 'btn ghost sm', text: '今天的記錄' }),
@@ -38,10 +38,13 @@ export default async function project({ projectId }) {
       ]),
     ]);
     if (dayEntries.length) {
-      const icons = [...new Set(dayEntries.flatMap((e) => e.categoryIds))].map(categoryIcon).join(' ');
+      const cats = [...new Set(dayEntries.flatMap((e) => e.categoryIds))];
       const preview = dayEntries[0];
-      card.append(el('div', { class: 'muted', style: 'margin-top:4px' },
-        `${icons}　${fmtTime(preview.capturedAt)} ${firstLine(preview)}`));
+      card.append(el('div', { class: 'row', style: 'margin-top:5px;gap:6px' }, [
+        ...cats.slice(0, 5).map((c) => icon(categoryIcon(c), { size: 16 })),
+        el('span', { class: 'muted', style: 'min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap' },
+          `${fmtTime(preview.capturedAt)} ${firstLine(preview)}`),
+      ]));
     } else {
       card.append(el('div', { class: 'muted', style: 'margin-top:4px', text: '還沒有記錄' }));
     }

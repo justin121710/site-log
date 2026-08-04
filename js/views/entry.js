@@ -16,6 +16,7 @@ import {
   pickAudio, audioDuration,
 } from '../media.js';
 import { confirmUpload, confirmAudioUpload } from '../confirm-upload.js';
+import { icon } from '../icons.js';
 import { tidyAndExtract, transcribe, describeImage } from '../gemini.js';
 import { fixTerms } from '../glossary.js';
 import { applyWatermark } from '../watermark.js';
@@ -61,7 +62,6 @@ export default async function entryView(params) {
           class: 'rm',
           type: 'button',
           'aria-label': '刪除這張照片',
-          text: '✕',
           onclick: async (ev) => {
             ev.preventDefault();
             ev.stopPropagation();
@@ -70,7 +70,7 @@ export default async function entryView(params) {
             URL.revokeObjectURL(url);
             renderMedia();
           },
-        }),
+        }, [icon('close', { size: 16 })]),
       ]);
       box.addEventListener('click', () => openPhoto(m, e, project, allowImageUpload));
       thumbs.append(box);
@@ -82,9 +82,9 @@ export default async function entryView(params) {
     }
   }
 
-  const shootBtn = el('button', { class: 'btn', type: 'button', text: '📷 拍照' });
+  const shootBtn = el('button', { class: 'btn', type: 'button' }, [icon('camera'), '拍照']);
   shootBtn.addEventListener('click', () => addPhotos({ camera: true }));
-  const albumBtn = el('button', { class: 'btn ghost', type: 'button', text: '🖼️ 從相簿選' });
+  const albumBtn = el('button', { class: 'btn ghost', type: 'button' }, [icon('image'), '從相簿選']);
   albumBtn.addEventListener('click', () => addPhotos({ camera: false, multiple: true }));
 
   async function addPhotos(opts) {
@@ -114,7 +114,11 @@ export default async function entryView(params) {
   // ---------- 錄音與逐字稿 ----------
   const audioList = el('div');
   const recStatus = el('span', { class: 'muted' });
-  const recBtn = el('button', { class: 'btn', type: 'button', text: '🎙️ 開始錄音' });
+  const recBtn = el('button', { class: 'btn', type: 'button' }, [icon('mic'), '開始錄音']);
+  const setRecLabel = (recording) => {
+    recBtn.replaceChildren(icon(recording ? 'stop' : 'mic'), recording ? '停止' : '開始錄音');
+    recBtn.classList.toggle('danger', recording);
+  };
   const recorder = new Recorder({
     onTick: (s) => { recStatus.replaceChildren(el('span', { class: 'rec-dot' }), ` 錄音中 ${fmtDuration(s)}`); },
   });
@@ -122,8 +126,7 @@ export default async function entryView(params) {
   recBtn.addEventListener('click', async () => {
     if (recorder.recording) {
       const out = await recorder.stop();
-      recBtn.textContent = '🎙️ 開始錄音';
-      recBtn.classList.remove('danger');
+      setRecLabel(false);
       recStatus.textContent = '';
       if (!out) { toast('沒有錄到聲音'); return; }
       const dur = out.duration || await audioDuration(out.blob);
@@ -134,14 +137,13 @@ export default async function entryView(params) {
     }
     try {
       await recorder.start();
-      recBtn.textContent = '⏹️ 停止';
-      recBtn.classList.add('danger');
+      setRecLabel(true);
     } catch (err) {
       toast(err.message, 4000);
     }
   });
 
-  const importBtn = el('button', { class: 'btn ghost', type: 'button', text: '📂 匯入音檔' });
+  const importBtn = el('button', { class: 'btn ghost', type: 'button' }, [icon('importFile'), '匯入音檔']);
   importBtn.addEventListener('click', async () => {
     const [f] = await pickAudio();
     if (!f) return;
@@ -168,7 +170,7 @@ export default async function entryView(params) {
 
   // ---------- 逐字稿 ----------
   const transcriptBox = el('textarea', {
-    placeholder: '按鍵盤上的 🎤 直接講，或自己打。\n例：地下二樓 X3 到 Y5 那根柱子的主筋續接，續接位置看起來太集中。',
+    placeholder: '按鍵盤上的麥克風鍵直接講，或自己打。\n例：地下二樓 X3 到 Y5 那根柱子的主筋續接，續接位置看起來太集中。',
   });
   transcriptBox.value = e.transcript || '';
   transcriptBox.addEventListener('input', () => {
@@ -236,7 +238,10 @@ export default async function entryView(params) {
   }
   renderAI();
 
-  const aiBtn = el('button', { class: 'btn ghost', type: 'button', text: '✨ 請 AI 整理並填欄位' });
+  const aiBtn = el('button', { class: 'btn ghost', type: 'button' }, [icon('sparkle'), '請 AI 整理並填欄位']);
+  const setAiLabel = (busy) => {
+    aiBtn.replaceChildren(icon('sparkle'), busy ? '整理中…' : '請 AI 整理並填欄位');
+  };
   aiBtn.addEventListener('click', async () => {
     flushActiveInput();
     const raw = transcriptBox.value.trim();
@@ -249,7 +254,7 @@ export default async function entryView(params) {
     if (toSend === null) return;
 
     aiBtn.disabled = true;
-    aiBtn.textContent = '整理中…';
+    setAiLabel(true);
     try {
       const out = await tidyAndExtract(toSend);
       e.ai = { ...out, model: await getSetting('geminiModel', ''), at: new Date().toISOString() };
@@ -268,7 +273,7 @@ export default async function entryView(params) {
       toast(err.message, 5000);
     } finally {
       aiBtn.disabled = false;
-      aiBtn.textContent = '✨ 請 AI 整理並填欄位';
+      setAiLabel(false);
     }
   });
 
@@ -297,8 +302,7 @@ export default async function entryView(params) {
         class: 'chip',
         type: 'button',
         'aria-pressed': String(on),
-        text: `${c.icon} ${c.name}`,
-      });
+      }, [icon(c.icon, { size: 17 }), c.name]);
       b.addEventListener('click', () => {
         const i = e.categoryIds.indexOf(c.id);
         if (i >= 0) e.categoryIds.splice(i, 1);
@@ -317,7 +321,8 @@ export default async function entryView(params) {
     for (const c of active) {
       const list = subtagTable[c.id] || [];
       const row = el('div', { style: 'margin-bottom:10px' }, [
-        el('div', { class: 'muted', style: 'margin-bottom:5px', text: `${c.icon} ${c.name}` }),
+        el('div', { class: 'row muted', style: 'gap:5px;margin-bottom:5px' },
+          [icon(c.icon, { size: 15 }), c.name]),
       ]);
       const chips = el('div', { class: 'chips' });
       for (const s of list) {
@@ -332,7 +337,7 @@ export default async function entryView(params) {
         });
         chips.append(b);
       }
-      const add = el('button', { class: 'chip sm', type: 'button', text: '＋ 自訂' });
+      const add = el('button', { class: 'chip sm', type: 'button' }, [icon('plus', { size: 15 }), '自訂']);
       add.addEventListener('click', async () => {
         const name = prompt(`在「${c.name}」底下新增子項：`);
         const v = (name || '').trim();
@@ -454,7 +459,10 @@ function audioRow(m, e, autosave, transcriptBox, refresh) {
   });
 
   return el('div', { style: 'margin-bottom:12px' }, [
-    el('div', { class: 'muted', text: `🎙️ ${fmtDuration(m.duration)}　${(m.size / 1024).toFixed(0)} KB` }),
+    el('div', { class: 'row muted', style: 'gap:5px' }, [
+      icon('waveform', { size: 16 }),
+      `${fmtDuration(m.duration)}　${(m.size / 1024).toFixed(0)} KB`,
+    ]),
     player,
     el('div', { class: 'row wrap', style: 'gap:8px;margin-top:6px' }, [toText, rm]),
   ]);
@@ -498,7 +506,9 @@ async function openPhoto(m, entry, project, allowImageUpload) {
   const actions = el('div', { class: 'row wrap', style: 'gap:8px;margin-top:10px' }, [wmBtn, shareBtn]);
 
   if (allowImageUpload) {
-    const askBtn = el('button', { class: 'btn ghost sm', type: 'button', text: '問 AI 這張照片' });
+    const askBtn = el('button', { class: 'btn ghost sm', type: 'button' }, [icon('sparkle', { size: 16 }), '問 AI 這張照片']);
+    const setAskLabel = (busy) => askBtn.replaceChildren(
+      icon('sparkle', { size: 16 }), busy ? '詢問中…' : '問 AI 這張照片');
     askBtn.addEventListener('click', async () => {
       const q = prompt('想問什麼？（AI 只會描述看到什麼，不會判斷合不合格）');
       if (!q) return;
@@ -509,7 +519,7 @@ async function openPhoto(m, entry, project, allowImageUpload) {
       });
       if (!ok) return;
       askBtn.disabled = true;
-      askBtn.textContent = '詢問中…';
+      setAskLabel(true);
       try {
         const answer = await describeImage(m.blob, q);
         actions.after(el('div', { class: 'ai-block', style: 'margin-top:10px' }, [
@@ -520,7 +530,7 @@ async function openPhoto(m, entry, project, allowImageUpload) {
         toast(err.message, 5000);
       } finally {
         askBtn.disabled = false;
-        askBtn.textContent = '問 AI 這張照片';
+        setAskLabel(false);
       }
     });
     actions.append(askBtn);

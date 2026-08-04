@@ -2,6 +2,7 @@
 
 import { el, toast, setTitle } from './ui.js';
 import { getSetting, requestPersistence } from './db.js';
+import { icon } from './icons.js';
 
 const view = document.getElementById('view');
 const backBtn = document.getElementById('btn-back');
@@ -108,8 +109,18 @@ window.addEventListener('error', (e) => {
   console.error('uncaught', e.error || e.message);
 });
 
+/** 外殼的 icon 也從 icons.js 來，才不會有兩份圖示定義各走各的。 */
+function paintChromeIcons() {
+  backBtn.replaceChildren(icon('chevronLeft', { size: 24 }));
+  const tabIcons = { projects: 'building', lib: 'layers', settings: 'sliders' };
+  for (const a of document.querySelectorAll('#tabbar a')) {
+    a.querySelector('.ico')?.replaceChildren(icon(tabIcons[a.dataset.tab], { size: 22 }));
+  }
+}
+
 (async function boot() {
   setTitle('監造工地筆記');
+  paintChromeIcons();
   await refreshTierBadge();
   requestPersistence().catch(() => {});
 

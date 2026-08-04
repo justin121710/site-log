@@ -6,6 +6,7 @@ import { refreshTierBadge } from '../app.js';
 import { DEFAULT_MODEL, MODELS, testKey } from '../gemini.js';
 import { getAliases, setAliases, getExtraSensitive, setExtraSensitive } from '../redact.js';
 import { exportBackup } from '../export.js';
+import { icon } from '../icons.js';
 
 export default async function settings() {
   setTitle('設定');
@@ -117,7 +118,8 @@ export default async function settings() {
       const to = input({ value: a.to, placeholder: '代號' });
       from.addEventListener('input', () => { a.from = from.value; });
       to.addEventListener('input', () => { a.to = to.value; });
-      const rm = el('button', { class: 'btn ghost sm', type: 'button', text: '✕' });
+      const rm = el('button', { class: 'btn ghost sm', type: 'button', 'aria-label': '刪除這組對照' },
+        [icon('close', { size: 16 })]);
       rm.addEventListener('click', () => { aliases.splice(i, 1); renderAliases(); });
       aliasList.append(el('div', { class: 'row', style: 'margin-bottom:8px' }, [
         from, el('span', { text: '→', class: 'muted' }), to, rm,
@@ -126,7 +128,7 @@ export default async function settings() {
   };
   renderAliases();
 
-  const addAlias = el('button', { class: 'btn ghost sm', type: 'button', text: '＋ 新增一組' });
+  const addAlias = el('button', { class: 'btn ghost sm', type: 'button' }, [icon('plus', { size: 16 }), '新增一組']);
   addAlias.addEventListener('click', () => { aliases.push({ from: '', to: '' }); renderAliases(); });
 
   const fillFromProjects = el('button', { class: 'btn ghost sm', type: 'button', text: '從專案自動帶入' });

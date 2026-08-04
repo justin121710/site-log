@@ -3,6 +3,7 @@
 import { el, setTitle, fmtDate, fmtTime, field, input, toast, debounce, flushActiveInput } from '../ui.js';
 import { get, listEntries, getOrCreateDay, saveDay, listMedia } from '../db.js';
 import { categoryIcon, categoryName } from '../taxonomy.js';
+import { icon } from '../icons.js';
 
 export default async function day({ projectId, date }) {
   const p = await get('projects', projectId);
@@ -13,7 +14,7 @@ export default async function day({ projectId, date }) {
   const d = await getOrCreateDay(projectId, date);
 
   wrap.append(el('div', { class: 'row wrap', style: 'gap:8px;margin-bottom:12px' }, [
-    el('a', { href: `#/p/${projectId}/new?date=${date}`, class: 'btn sm', text: '＋ 新增記錄' }),
+    el('a', { href: `#/p/${projectId}/new?date=${date}`, class: 'btn sm' }, [icon('plus', { size: 18 }), '新增記錄']),
     el('a', { href: `#/p/${projectId}/report/${date}`, class: 'btn ghost sm', text: '產生日報' }),
   ]));
 
@@ -71,8 +72,8 @@ export default async function day({ projectId, date }) {
     const audioCount = media.filter((m) => m.kind === 'audio').length;
 
     const thumb = el('div', {
-      style: 'width:64px;height:64px;flex:none;border-radius:10px;overflow:hidden;'
-        + 'background:var(--surface-2);display:flex;align-items:center;justify-content:center;font-size:26px',
+      style: 'width:64px;height:64px;flex:none;border-radius:10px;overflow:hidden;color:var(--text-dim);'
+        + 'background:var(--surface-2);display:flex;align-items:center;justify-content:center',
     });
     if (photo) {
       const url = URL.createObjectURL(photo.blob);
@@ -80,11 +81,15 @@ export default async function day({ projectId, date }) {
       img.addEventListener('load', () => URL.revokeObjectURL(url), { once: true });
       thumb.append(img);
     } else {
-      thumb.textContent = audioCount ? '🎙️' : '📝';
+      thumb.append(icon(audioCount ? 'waveform' : 'note', { size: 26 }));
     }
 
     const place = [e.floor, e.gridline, e.area].filter(Boolean).join(' · ');
-    const cats = e.categoryIds.map((c) => `${categoryIcon(c)}${categoryName(c)}`).join('　');
+    const cats = el('div', { class: 'row wrap', style: 'gap:4px 10px;margin-top:4px' },
+      e.categoryIds.map((c) => el('span', { class: 'row muted', style: 'gap:4px' }, [
+        icon(categoryIcon(c), { size: 15 }),
+        categoryName(c),
+      ])));
 
     wrap.append(el('a', { href: `#/e/${e.id}`, class: 'card' }, [
       el('div', { class: 'row', style: 'align-items:flex-start;gap:12px' }, [
@@ -98,7 +103,7 @@ export default async function day({ projectId, date }) {
               ? el('span', { class: 'badge badge-unverified', text: '未查證' })
               : e.verified ? el('span', { class: 'badge badge-verified', text: '已確認' }) : null,
           ]),
-          cats ? el('div', { class: 'muted', style: 'margin-top:3px', text: cats }) : null,
+          e.categoryIds.length ? cats : null,
           el('div', {
             style: 'margin-top:4px;font-size:14px;display:-webkit-box;-webkit-line-clamp:2;'
               + '-webkit-box-orient:vertical;overflow:hidden',

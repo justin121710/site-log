@@ -3,6 +3,7 @@
 import { el, setTitle } from '../ui.js';
 import { CATEGORIES } from '../taxonomy.js';
 import { countByIndex } from '../db.js';
+import { icon } from '../icons.js';
 
 export default async function library() {
   setTitle('經驗庫');
@@ -15,7 +16,7 @@ export default async function library() {
     const n = await countByIndex('entries', 'categoryIds', IDBKeyRange.only(c.id));
     wrap.append(el('a', { href: `#/lib/${c.id}`, class: 'card' }, [
       el('div', { class: 'row' }, [
-        el('span', { text: c.icon, style: 'font-size:24px' }),
+        icon(c.icon, { size: 24 }),
         el('strong', { text: c.name, style: 'font-size:16px' }),
         el('span', { class: 'spacer' }),
         el('span', { class: n ? '' : 'muted', text: `${n} 筆` }),
