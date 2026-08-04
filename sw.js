@@ -79,7 +79,10 @@ self.addEventListener('fetch', (e) => {
   e.respondWith((async () => {
     if (isCode(url, e.request)) {
       try {
-        return await putInCache(e.request, await fetch(e.request));
+        // cache: 'no-cache' 會強制向伺服器驗證。少了這個，GitHub Pages 的
+        // max-age=600 會讓使用者在改版後最多還跑十分鐘的舊程式。
+        // 檔案沒變時伺服器回 304，成本很低。
+        return await putInCache(e.request, await fetch(e.request, { cache: 'no-cache' }));
       } catch {
         const cached = await caches.match(e.request);
         if (cached) return cached;
