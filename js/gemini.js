@@ -166,6 +166,16 @@ function keyHint(msg) {
   if (/PERMISSION_DENIED|SERVICE_DISABLED/i.test(msg)) {
     return '這把 key 所屬的專案還沒啟用 Generative Language API，去 Google Cloud Console 開啟它。';
   }
+  if (/prepayment credits are depleted|prepay/i.test(msg)) {
+    return '這個專案的預付額度歸零了。Google 的規則是餘額一到 0，'
+      + '該帳單帳戶底下所有專案的 key 會同時停止運作，而且「不會」自動退回免費層。'
+      + '兩條路：到 AI Studio 的 Billing 頁加值（最低 10 美元），'
+      + '或另外開一個「沒有綁帳單」的新專案拿一把免費層的 key。'
+      + '不想處理的話，設定最上面把 AI 關掉就好，記錄與日報都還能照常用。';
+  }
+  if (/RESOURCE_EXHAUSTED|quota/i.test(msg)) {
+    return '超過用量限制。免費層的每分鐘／每日額度很緊，等一下再試，或改用比較便宜的模型。';
+  }
   return null;
 }
 

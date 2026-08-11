@@ -76,7 +76,7 @@ export default async function settings() {
   let curTier = tier;
   const tierBtns = [
     { v: 'free', label: '免費層' },
-    { v: 'paid', label: '付費層（已綁信用卡）' },
+    { v: 'paid', label: '付費層（已加值／綁定帳單）' },
   ].map(({ v, label }) => {
     const b = el('button', { class: 'chip', type: 'button', 'aria-pressed': String(v === curTier), text: label });
     b.addEventListener('click', () => {
@@ -126,6 +126,19 @@ export default async function settings() {
   const aiBox = el('input', { type: 'checkbox', style: 'width:22px;min-height:22px;flex:none' });
   aiBox.checked = !!aiEnabled;
 
+  // AI 關掉的時候，底下這些卡片全部收起來——它們全部只在送資料給 Gemini 時才有作用，
+  // 留在畫面上只會讓人以為還有東西要設定。設定值本身不會被清掉。
+  const aiOnlyCards = [];
+  const addAiCard = (node) => {
+    aiOnlyCards.push(node);
+    wrap.append(node);
+    return node;
+  };
+  const syncAiCards = () => {
+    for (const c of aiOnlyCards) c.hidden = !aiBox.checked;
+  };
+  aiBox.addEventListener('change', syncAiCards);
+
   wrap.append(el('div', { class: 'card' }, [
     el('h2', { text: '要不要用 AI' }),
     el('p', { class: 'muted', style: 'margin:-4px 0 10px' },
@@ -138,7 +151,7 @@ export default async function settings() {
     ]),
   ]));
 
-  wrap.append(el('div', { class: 'card' }, [
+  addAiCard(el('div', { class: 'card' }, [
     el('h2', { text: 'Gemini API' }),
     field('API Key', keyInput, 'key 只存在這台裝置的瀏覽器裡，不會進 GitHub、不會傳給我。'),
     keyFormatNote,
@@ -154,6 +167,7 @@ export default async function settings() {
   ]));
 
   // ---------- 逐字稿來源 ----------
+  // 這張卡整張只在決定「要不要把錄音送出去」，AI 關掉時剩下的選項只有鍵盤聽寫，沒得選
   const src = await getSetting('transcriptSource', 'dictation');
   let curSrc = src;
   const srcBtns = [
@@ -168,7 +182,7 @@ export default async function settings() {
     return b;
   });
 
-  wrap.append(el('div', { class: 'card' }, [
+  addAiCard(el('div', { class: 'card' }, [
     el('h2', { text: '逐字稿預設來源' }),
     el('p', { class: 'muted', style: 'margin:-4px 0 10px' },
       '這只是預設值，每一筆記錄都還是可以當場改。錄音檔本身永遠留在裝置上，'
@@ -180,7 +194,7 @@ export default async function settings() {
   const allowImg = await getSetting('allowImageUpload', false);
   const allowImgBox = el('input', { type: 'checkbox', style: 'width:22px;min-height:22px;flex:none' });
   allowImgBox.checked = !!allowImg;
-  wrap.append(el('div', { class: 'card' }, [
+  addAiCard(el('div', { class: 'card' }, [
     el('h2', { text: '圖片' }),
     el('div', { class: 'notice info' },
       '照片預設永遠不會上傳。打開下面這個開關之後，你才能在單一張照片上手動點「問 AI」，'
@@ -230,7 +244,7 @@ export default async function settings() {
     toast(n ? `帶入 ${n} 組` : '沒有新的可帶入（專案要先填代號）');
   });
 
-  wrap.append(el('div', { class: 'card' }, [
+  addAiCard(el('div', { class: 'card' }, [
     el('h2', { text: '代號對照表' }),
     el('p', { class: 'muted', style: 'margin:-4px 0 10px' },
       '送 AI 之前，左邊的字會自動換成右邊的代號。'
@@ -246,13 +260,15 @@ export default async function settings() {
     style: 'min-height:90px',
   });
   sensInput.value = extraSensitive.join('\n');
-  wrap.append(el('div', { class: 'card' }, [
+  addAiCard(el('div', { class: 'card' }, [
     el('h2', { text: '敏感詞警示' }),
     el('p', { class: 'muted', style: 'margin:-4px 0 10px' },
       '送出前會掃描要傳出去的文字，命中就標紅提醒你。專案名稱、機關、承商會自動納入，'
       + '這裡只需要補其他的。'),
     sensInput,
   ]));
+
+  syncAiCards(); // 進頁面時就要是對的狀態，不能等使用者去撥開關
 
   // ---------- 儲存 ----------
   const saveBtn = el('button', { class: 'btn block', text: '儲存設定' });
