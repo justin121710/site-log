@@ -139,6 +139,18 @@ export default async function settings() {
   };
   aiBox.addEventListener('change', syncAiCards);
 
+  // AI 關掉時 Gemini 卡片會收起來，等於看不到 key 還在不在。
+  // 在這裡給一行遮罩過的確認，免得使用者以為關掉開關就把 key 弄丟了。
+  const keyStatus = el('div', { class: 'muted', style: 'margin-top:10px' });
+  const renderKeyStatus = () => {
+    const k = keyInput.value.trim();
+    keyStatus.replaceChildren(k
+      ? el('span', {}, `已存有 API key：${maskKey(k)}　關掉 AI 不會把它刪掉。`)
+      : el('span', {}, '還沒存過 API key。'));
+  };
+  keyInput.addEventListener('input', renderKeyStatus);
+  renderKeyStatus();
+
   wrap.append(el('div', { class: 'card' }, [
     el('h2', { text: '要不要用 AI' }),
     el('p', { class: 'muted', style: 'margin:-4px 0 10px' },
@@ -149,11 +161,14 @@ export default async function settings() {
       aiBox,
       el('span', { text: '使用 Gemini（需要 API key 與額度）' }),
     ]),
+    keyStatus,
   ]));
 
   addAiCard(el('div', { class: 'card' }, [
     el('h2', { text: 'Gemini API' }),
-    field('API Key', keyInput, 'key 只存在這台裝置的瀏覽器裡，不會進 GitHub、不會傳給我。'),
+    field('API Key', keyInput,
+      'key 只存在這台裝置的瀏覽器裡，不會進 GitHub、不會傳給我，也刻意不放進備份 zip'
+      + '（備份會被丟到雲端硬碟，key 不該跟著跑）。所以還原備份之後要重貼一次。'),
     keyFormatNote,
     el('label', { class: 'field' }, [
       el('span', { text: '模型' }),
@@ -283,6 +298,7 @@ export default async function settings() {
     await setAliases(aliases.filter((a) => a.from.trim() && a.to.trim()));
     await setExtraSensitive(sensInput.value.split('\n').map((s) => s.trim()).filter(Boolean));
     await refreshTierBadge();
+    renderKeyStatus();
     toast('已儲存');
   });
   wrap.append(saveBtn);
@@ -330,6 +346,12 @@ export default async function settings() {
   wrap.append(wipe);
 
   return wrap;
+}
+
+/** 只露頭尾，足夠讓你認出是不是同一把，但不會整串顯示在螢幕上。 */
+function maskKey(k) {
+  if (k.length <= 10) return `${k.slice(0, 3)}…`;
+  return `${k.slice(0, 5)}…${k.slice(-4)}`;
 }
 
 function tierNoticeContent(tier) {
