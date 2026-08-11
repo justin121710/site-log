@@ -3,11 +3,27 @@
 import { el, setTitle, fmtDate, today } from '../ui.js';
 import { listProjects, countByIndex } from '../db.js';
 import { icon } from '../icons.js';
+import { backupIsOverdue, getLastBackup, BACKUP_NAG_DAYS } from '../export.js';
+import { exportDialog } from '../export-ui.js';
 
 export default async function projects() {
   setTitle('專案');
   const rows = await listProjects();
   const wrap = el('div');
+
+  // 工地資料重做不回來，所以太久沒備份就直接擋在首頁上念
+  if (await backupIsOverdue()) {
+    const { days } = await getLastBackup();
+    const nagBtn = el('button', { class: 'btn sm', type: 'button', text: '現在備份' });
+    nagBtn.addEventListener('click', () => exportDialog({ title: '全部資料' }));
+    wrap.append(el('div', { class: 'notice warn' }, [
+      el('strong', { text: days === null ? '你還沒備份過' : `已經 ${days} 天沒備份了` }),
+      el('div', { style: 'margin-bottom:9px' },
+        'iOS 在空間不足時會清掉瀏覽器資料，手機掉了也一樣。'
+        + `照片與錄音都只在這台裝置上，重做不回來。建議至少每 ${BACKUP_NAG_DAYS} 天匯出一次。`),
+      nagBtn,
+    ]));
+  }
 
   wrap.append(
     el('a', { href: '#/p/new/edit', class: 'btn block', style: 'margin-bottom:14px' },

@@ -5,7 +5,8 @@ import { getSetting, setSetting, storageEstimate, listProjects } from '../db.js'
 import { refreshTierBadge } from '../app.js';
 import { DEFAULT_MODEL, MODELS, testKey } from '../gemini.js';
 import { getAliases, setAliases, getExtraSensitive, setExtraSensitive } from '../redact.js';
-import { exportBackup } from '../export.js';
+import { getLastBackup, BACKUP_NAG_DAYS } from '../export.js';
+import { exportDialog } from '../export-ui.js';
 import { icon } from '../icons.js';
 
 export default async function settings() {
@@ -186,25 +187,22 @@ export default async function settings() {
 
   // ---------- 備份與空間 ----------
   const est = await storageEstimate();
-  const backupBtn = el('button', { class: 'btn ghost block', type: 'button', text: '匯出備份（.zip）' });
-  backupBtn.addEventListener('click', async () => {
-    backupBtn.disabled = true;
-    backupBtn.textContent = '打包中…';
-    try {
-      await exportBackup();
-    } catch (e) {
-      toast(`匯出失敗：${e.message}`, 5000);
-    } finally {
-      backupBtn.disabled = false;
-      backupBtn.textContent = '匯出備份（.zip）';
-    }
-  });
+  const { iso, days } = await getLastBackup();
+
+  const backupBtn = el('button', { class: 'btn block', type: 'button', text: '匯出…' });
+  backupBtn.addEventListener('click', () => exportDialog({ title: '全部資料' }));
+
+  const statusLine = !iso
+    ? el('div', { class: 'notice warn' }, '還沒有備份過。')
+    : el('p', { class: days >= BACKUP_NAG_DAYS ? '' : 'muted', style: 'margin:-4px 0 10px' },
+      `上次備份：${iso.slice(0, 10)}（${days === 0 ? '今天' : `${days} 天前`}）`);
 
   wrap.append(el('div', { class: 'card', style: 'margin-top:16px' }, [
-    el('h2', { text: '備份' }),
-    el('p', { class: 'muted', style: 'margin:-4px 0 10px' },
-      '匯出後用 iOS 的分享選單存到「檔案」或雲端硬碟。'
-      + '瀏覽器的儲存空間有可能被系統清掉，請定期匯出。'),
+    el('h2', { text: '備份與匯出' }),
+    statusLine,
+    el('p', { class: 'muted', style: 'margin:0 0 10px' },
+      '匯出後用 iOS 的分享選單存到「檔案」或 iCloud。'
+      + '瀏覽器的儲存空間有可能被系統清掉，照片與錄音只在這台裝置上，重做不回來。'),
     backupBtn,
     est ? el('p', { class: 'muted', style: 'margin-top:10px' },
       `已用 ${fmtBytes(est.usage)}　可用約 ${fmtBytes(est.quota)}`) : null,

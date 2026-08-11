@@ -26,6 +26,8 @@ const ASSETS = [
   'js/watermark.js',
   'js/zip.js',
   'js/export.js',
+  'js/export-ui.js',
+  'js/markdown.js',
   'js/confirm-upload.js',
   'js/report-template.js',
   'js/views/projects.js',

@@ -4,6 +4,7 @@ import { el, setTitle, fmtDate, fmtTime, field, input, toast, debounce, flushAct
 import { get, listEntries, getOrCreateDay, saveDay, listMedia } from '../db.js';
 import { categoryIcon, categoryName } from '../taxonomy.js';
 import { icon } from '../icons.js';
+import { exportDialog } from '../export-ui.js';
 
 export default async function day({ projectId, date }) {
   const p = await get('projects', projectId);
@@ -13,9 +14,14 @@ export default async function day({ projectId, date }) {
   const wrap = el('div');
   const d = await getOrCreateDay(projectId, date);
 
+  const exportBtn = el('button', { class: 'btn ghost sm', type: 'button', text: '匯出這一天' });
+  exportBtn.addEventListener('click', () =>
+    exportDialog({ projectId, date, title: `${p.name || '專案'}　${fmtDate(date)}` }));
+
   wrap.append(el('div', { class: 'row wrap', style: 'gap:8px;margin-bottom:12px' }, [
     el('a', { href: `#/p/${projectId}/new?date=${date}`, class: 'btn sm' }, [icon('plus', { size: 18 }), '新增記錄']),
     el('a', { href: `#/p/${projectId}/report/${date}`, class: 'btn ghost sm', text: '產生日報' }),
+    exportBtn,
   ]));
 
   // ---------- 當日工地資訊 ----------

@@ -4,6 +4,7 @@ import { el, setTitle, fmtDate, fmtTime, today } from '../ui.js';
 import { get, listEntries } from '../db.js';
 import { categoryIcon } from '../taxonomy.js';
 import { icon } from '../icons.js';
+import { exportDialog } from '../export-ui.js';
 
 export default async function project({ projectId }) {
   const p = await get('projects', projectId);
@@ -22,10 +23,15 @@ export default async function project({ projectId }) {
     style: 'margin-bottom:12px',
   }, [icon('plus'), '新增記錄']));
 
+  const exportBtn = el('button', { class: 'btn ghost sm', type: 'button', text: '匯出' });
+  exportBtn.addEventListener('click', () =>
+    exportDialog({ projectId: p.id, title: p.name || '這個專案' }));
+
   wrap.append(el('div', { class: 'row wrap', style: 'gap:8px;margin-bottom:14px' }, [
     el('a', { href: `#/p/${p.id}/day/${t}`, class: 'btn ghost sm', text: '今天的記錄' }),
     el('a', { href: `#/p/${p.id}/report/${t}`, class: 'btn ghost sm', text: '今日日報' }),
     el('a', { href: `#/p/${p.id}/edit`, class: 'btn ghost sm', text: '專案設定' }),
+    exportBtn,
   ]));
 
   for (const date of dates.slice(0, 30)) {
