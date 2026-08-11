@@ -58,6 +58,84 @@ function dedupe(list) {
   return out;
 }
 
+// ---------- 本機草稿（不用 AI）----------
+//
+// 依分類把記錄分派到日報五段。規則是寫死的，只搬運使用者自己打的字，
+// 一個字都不會多。比 AI 版粗糙，但它不可能編造，也不需要網路或額度。
+//
+// 一筆記錄可以同時落在多個段落——同一個動作本來就可能既是施工也是材料查驗。
+
+/** 一級分類 → 第一段（工程進行情況）。自訂分類也算施工作業。 */
+const CONSTRUCTION_CATS = new Set([
+  'temp', 'survey', 'foundation', 'rebar', 'formwork', 'concrete',
+  'steel', 'facade', 'waterproof', 'mep', 'finish',
+]);
+
+/** 這些關鍵詞出現在子項或內文時，該筆同時歸進對應段落。 */
+const SECTION_HINTS = {
+  s2: /檢驗停留點|停留點|查驗|抽查|抽驗|複驗|放樣|軸線|圖說|施工圖|自主檢查/,
+  s3: /材料|試驗|試體|坍度|氯離子|送審|抽樣|檢測|出廠|規格|品質|進場/,
+  s4: /安全|衛生|護欄|防護|動火|局限空間|吊掛|防護具|安衛/,
+  s5: /缺失|異常|不符合|改正|通知|指示|會勘|爭議|停工/,
+};
+
+function entryLine(entry) {
+  const place = [entry.floor, entry.gridline, entry.area].filter(Boolean).join(' ');
+  const body = (entry.ai?.tidied || entry.transcript || entry.note || '').trim().replace(/\s*\n\s*/g, '　');
+  if (!body && !place) return null;
+  return `・${place ? `${place}：` : ''}${body || '（無文字說明）'}`;
+}
+
+/** 這筆記錄要進哪幾段。 */
+function sectionsFor(entry) {
+  const hay = [
+    ...entry.subtags,
+    entry.ai?.tidied || '',
+    entry.transcript || '',
+    entry.note || '',
+  ].join(' ');
+
+  const hit = new Set();
+  if (entry.categoryIds.some((c) => CONSTRUCTION_CATS.has(c))) hit.add('s1');
+  if (entry.categoryIds.includes('survey') || SECTION_HINTS.s2.test(hay)) hit.add('s2');
+  if (entry.categoryIds.includes('material') || SECTION_HINTS.s3.test(hay)) hit.add('s3');
+  if (entry.categoryIds.includes('safety') || SECTION_HINTS.s4.test(hay)) hit.add('s4');
+  if (entry.categoryIds.includes('defect') || SECTION_HINTS.s5.test(hay)) hit.add('s5');
+
+  // 什麼都沒對上的，寧可放進第一段讓他自己搬，也不要讓它整筆消失
+  if (!hit.size) hit.add('s1');
+  return hit;
+}
+
+/**
+ * 完全在本機產生日報草稿。
+ * @returns {{ s1,s2,s3,s4,s5, freeSummary }}
+ */
+export function buildLocalDraft({ entries }) {
+  const buckets = { s1: [], s2: [], s3: [], s4: [], s5: [] };
+  const sorted = [...entries].sort((a, b) => (a.capturedAt || '').localeCompare(b.capturedAt || ''));
+
+  for (const e of sorted) {
+    const line = entryLine(e);
+    if (!line) continue;
+    for (const s of sectionsFor(e)) buckets[s].push(line);
+  }
+
+  const out = {};
+  for (const k of ['s1', 's2', 's3', 's4', 's5']) {
+    out[k] = buckets[k].length ? [...new Set(buckets[k])].join('\n') : '本日無';
+  }
+
+  // 給自己看的：你自己寫的備註，加上還沒查證的 AI 內容
+  const notes = sorted.filter((e) => e.note?.trim())
+    .map((e) => `・${[e.floor, e.gridline].filter(Boolean).join(' ')}${e.floor ? '：' : ''}${e.note.trim()}`);
+  const unverified = sorted.filter((e) => e.ai && !e.verified).length;
+  if (unverified) notes.push(`・今天有 ${unverified} 筆 AI 整理的內容還沒查證，記得問前輩或查規範。`);
+  out.freeSummary = notes.join('\n');
+
+  return out;
+}
+
 /** 產出可以整段複製貼進公司表單的純文字。 */
 export function renderReportText({ project, day, date, sections, freeSummary }) {
   const L = [];

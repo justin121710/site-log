@@ -48,7 +48,8 @@ export default async function entryView(params) {
 
   // ---------- 照片 ----------
   const thumbs = el('div', { class: 'thumbs' });
-  const allowImageUpload = await getSetting('allowImageUpload', false);
+  const aiOn = await getSetting('aiEnabled', true);
+  const allowImageUpload = aiOn && await getSetting('allowImageUpload', false);
 
   async function renderMedia() {
     const media = await listMedia(e.id);
@@ -78,7 +79,7 @@ export default async function entryView(params) {
 
     audioList.replaceChildren();
     for (const m of media.filter((x) => x.kind === 'audio')) {
-      audioList.append(audioRow(m, e, autosave, transcriptBox, renderMedia));
+      audioList.append(audioRow(m, e, autosave, transcriptBox, renderMedia, aiOn));
     }
   }
 
@@ -277,11 +278,14 @@ export default async function entryView(params) {
     }
   });
 
-  wrap.append(el('div', { class: 'card' }, [
-    el('h2', { text: 'AI 整理' }),
-    el('div', { class: 'row', style: 'margin-bottom:10px' }, [aiBtn]),
-    aiBox,
-  ]));
+  if (aiOn || e.ai) {
+    wrap.append(el('div', { class: 'card' }, [
+      el('h2', { text: 'AI 整理' }),
+      // 關掉 AI 之後仍然要看得到以前整理過的內容，只是不能再產生新的
+      aiOn ? el('div', { class: 'row', style: 'margin-bottom:10px' }, [aiBtn]) : null,
+      aiBox,
+    ]));
+  }
 
   // ---------- 位置與分類 ----------
   const fields = {};
@@ -453,7 +457,7 @@ export default async function entryView(params) {
 
 // ---------- 錄音列 ----------
 
-function audioRow(m, e, autosave, transcriptBox, refresh) {
+function audioRow(m, e, autosave, transcriptBox, refresh, aiEnabled = true) {
   const url = URL.createObjectURL(m.blob);
   const player = el('audio', { controls: '', src: url, preload: 'metadata' });
 
@@ -493,7 +497,7 @@ function audioRow(m, e, autosave, transcriptBox, refresh) {
       `${fmtDuration(m.duration)}　${(m.size / 1024).toFixed(0)} KB`,
     ]),
     player,
-    el('div', { class: 'row wrap', style: 'gap:8px;margin-top:6px' }, [toText, rm]),
+    el('div', { class: 'row wrap', style: 'gap:8px;margin-top:6px' }, [aiEnabled ? toText : null, rm]),
   ]);
 }
 

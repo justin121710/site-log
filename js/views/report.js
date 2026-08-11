@@ -7,7 +7,7 @@ import { el, setTitle, fmtDate, toast, confirmDialog, flushActiveInput } from '.
 import { get, listEntries, getOrCreateDay, getReport, saveReport, reportId, getSetting } from '../db.js';
 import { REPORT_SECTIONS, makeReport } from '../gemini.js';
 import { confirmUpload } from '../confirm-upload.js';
-import { buildMaterial, renderReportText } from '../report-template.js';
+import { buildMaterial, renderReportText, buildLocalDraft } from '../report-template.js';
 import { icon } from '../icons.js';
 import { revertAliases, getAliases } from '../redact.js';
 
@@ -104,6 +104,24 @@ export default async function report({ projectId, date }) {
     }
   });
 
+  // 不用 AI 的路。沒網路、沒額度、沒帳號一樣做得出草稿。
+  const localBtn = el('button', { class: 'btn ghost block', type: 'button', text: '本機整理草稿（不用 AI）' });
+  localBtn.addEventListener('click', async () => {
+    flushActiveInput();
+    const hasContent = Object.values(boxes).some((b) => b.value.trim()) || freeBox.value.trim();
+    if (hasContent && !await confirmDialog({
+      title: '要覆蓋現在的內容嗎？',
+      body: '重新產生會蓋掉你已經改過的文字。',
+      okLabel: '重新產生',
+    })) return;
+
+    const out = buildLocalDraft({ entries });
+    for (const s of REPORT_SECTIONS) boxes[s.key].value = out[s.key];
+    freeBox.value = out.freeSummary;
+    await persist(false);
+    toast('已依分類把今天的記錄分好段。文字全是你自己寫的，請自己調整通順。', 6000);
+  });
+
   async function persist(quiet = true) {
     saved = {
       id: reportId(projectId, date),
@@ -124,10 +142,17 @@ export default async function report({ projectId, date }) {
   verifyBox.checked = !!saved?.verified;
   verifyBox.addEventListener('change', () => persist(true));
 
-  const statusNotice = el('div', { class: 'notice warn' }, [
-    el('strong', { text: 'AI 產出的日報是草稿，不是可以直接交出去的表報。' }),
-    '每一段都要自己核對過。它被禁止編造，但語音辨識錯字、分段錯位還是會發生。',
-  ]);
+  const aiEnabled = await getSetting('aiEnabled', true);
+
+  const statusNotice = el('div', { class: 'notice warn' }, aiEnabled
+    ? [
+      el('strong', { text: '產出的日報是草稿，不是可以直接交出去的表報。' }),
+      '每一段都要自己核對過。AI 被禁止編造，但語音辨識錯字、分段錯位還是會發生。',
+    ]
+    : [
+      el('strong', { text: '本機草稿只是把你的記錄依分類分段。' }),
+      '文字全部是你自己寫的，不會多一個字，但也不會幫你潤稿。請自己調整通順再交出去。',
+    ]);
 
   // ---------- 匯出 ----------
   const copyBtn = el('button', { class: 'btn ghost', type: 'button', text: '複製全文' });
@@ -154,7 +179,9 @@ export default async function report({ projectId, date }) {
 
   wrap.append(
     statusNotice,
-    genBtn,
+    aiEnabled ? genBtn : null,
+    aiEnabled ? el('div', { style: 'height:8px' }) : null,
+    localBtn,
     el('div', { style: 'height:12px' }),
     sectionCard,
     el('label', { class: 'row', style: 'gap:10px;margin:0 0 14px;cursor:pointer' }, [

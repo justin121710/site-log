@@ -121,6 +121,23 @@ export default async function settings() {
     }
   });
 
+  // ---------- AI 總開關 ----------
+  const aiEnabled = await getSetting('aiEnabled', true);
+  const aiBox = el('input', { type: 'checkbox', style: 'width:22px;min-height:22px;flex:none' });
+  aiBox.checked = !!aiEnabled;
+
+  wrap.append(el('div', { class: 'card' }, [
+    el('h2', { text: '要不要用 AI' }),
+    el('p', { class: 'muted', style: 'margin:-4px 0 10px' },
+      '關掉之後所有 AI 按鈕都會消失，這個 App 就是一個純手動的工地記錄本——'
+      + '拍照、錄音、鍵盤聽寫、分類、經驗庫、浮水印、日報分段、匯出備份全部照常。'
+      + '以前整理過的內容不會消失，只是不能再產生新的。'),
+    el('label', { class: 'row', style: 'gap:10px;cursor:pointer' }, [
+      aiBox,
+      el('span', { text: '使用 Gemini（需要 API key 與額度）' }),
+    ]),
+  ]));
+
   wrap.append(el('div', { class: 'card' }, [
     el('h2', { text: 'Gemini API' }),
     field('API Key', keyInput, 'key 只存在這台裝置的瀏覽器裡，不會進 GitHub、不會傳給我。'),
@@ -241,6 +258,7 @@ export default async function settings() {
   const saveBtn = el('button', { class: 'btn block', text: '儲存設定' });
   saveBtn.addEventListener('click', async () => {
     flushActiveInput();
+    await setSetting('aiEnabled', aiBox.checked);
     await setSetting('geminiApiKey', keyInput.value.trim());
     await setSetting('geminiTier', curTier);
     await setSetting('geminiModel', modelSel.value);

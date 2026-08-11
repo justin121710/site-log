@@ -92,7 +92,10 @@ export async function refreshTierBadge() {
   const badge = document.getElementById('tier-badge');
   const key = await getSetting('geminiApiKey', '');
   const tier = await getSetting('geminiTier', '');
-  if (!key) {
+  if (!await getSetting('aiEnabled', true)) {
+    badge.className = 'tier tier-off';
+    badge.textContent = 'AI 已關閉';
+  } else if (!key) {
     badge.className = 'tier tier-off';
     badge.textContent = '未設定 AI';
   } else if (tier === 'paid') {
