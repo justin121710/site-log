@@ -3,7 +3,7 @@
 import { el, setTitle, field, input, toast, fmtBytes, confirmDialog, flushActiveInput } from '../ui.js';
 import { getSetting, setSetting, storageEstimate, listProjects } from '../db.js';
 import { refreshTierBadge } from '../app.js';
-import { DEFAULT_MODEL, MODELS, testKey } from '../gemini.js';
+import { DEFAULT_MODEL, FALLBACK_MODELS, testKey, listModels } from '../gemini.js';
 import { getAliases, setAliases, getExtraSensitive, setExtraSensitive } from '../redact.js';
 import { getLastBackup, BACKUP_NAG_DAYS } from '../export.js';
 import { exportDialog } from '../export-ui.js';
@@ -18,9 +18,59 @@ export default async function settings() {
   const tier = await getSetting('geminiTier', 'free');
   const model = await getSetting('geminiModel', DEFAULT_MODEL);
 
-  const keyInput = input({ type: 'password', value: key, placeholder: 'AIza…', autocomplete: 'off' });
-  const modelSel = el('select', {},
-    MODELS.map((m) => el('option', { value: m.id, selected: m.id === model }, m.label)));
+  const keyInput = input({ type: 'password', value: key, placeholder: 'AQ… 或 AIza…', autocomplete: 'off' });
+  const modelSel = el('select', {});
+
+  // 保留目前選的那個，就算它不在清單裡也一樣——不要在使用者沒察覺的情況下換掉他的模型
+  function fillModels(list, selected) {
+    const ids = list.map((m) => m.id);
+    if (selected && !ids.includes(selected)) {
+      list = [{ id: selected, label: '（目前設定，已不在可用清單中）' }, ...list];
+    }
+    modelSel.replaceChildren(...list.map((m) => el('option',
+      { value: m.id, selected: m.id === selected },
+      m.label ? `${m.id} — ${m.label}` : m.id)));
+  }
+  fillModels(FALLBACK_MODELS, model);
+
+  const modelHint = el('div', { class: 'muted', style: 'margin-top:6px' },
+    'Google 換模型的速度比這個 App 改版快。跳出「模型用不了」就按下面這顆重抓。');
+
+  const fetchModelsBtn = el('button', { class: 'btn ghost sm', type: 'button', text: '抓取可用模型' });
+  fetchModelsBtn.addEventListener('click', async () => {
+    flushActiveInput();
+    const k = keyInput.value.trim();
+    if (!k) { toast('先貼上 API key'); return; }
+    fetchModelsBtn.disabled = true;
+    fetchModelsBtn.textContent = '查詢中…';
+    try {
+      const list = await listModels(k);
+      if (!list.length) throw new Error('這把 key 沒有任何可用的文字模型');
+      const keep = list.some((m) => m.id === modelSel.value) ? modelSel.value : list[0].id;
+      fillModels(list, keep);
+      modelHint.textContent = `你的 key 目前可以用 ${list.length} 個模型。`;
+      toast(`抓到 ${list.length} 個，已選 ${keep}`, 4000);
+    } catch (e) {
+      toast(`查詢失敗：${e.message}`, 6000);
+    } finally {
+      fetchModelsBtn.disabled = false;
+      fetchModelsBtn.textContent = '抓取可用模型';
+    }
+  });
+
+  // AQ. 是 Google 2026 年開始發的新格式，native endpoint 完全支援。
+  // 只有那些寫死要 AIza 開頭的第三方工具會擋，這個 App 不會。
+  const keyFormatNote = el('div', {});
+  const checkKeyFormat = () => {
+    const k = keyInput.value.trim();
+    keyFormatNote.replaceChildren();
+    if (!k || k.startsWith('AQ.') || k.startsWith('AQ') || k.startsWith('AIza')) return;
+    keyFormatNote.append(el('div', { class: 'notice warn' },
+      '這串不太像 Gemini API key（正常是 AQ. 或 AIza 開頭）。'
+      + '確認你複製的是 Google AI Studio 的 API key，不是專案 ID 或 OAuth token。'));
+  };
+  keyInput.addEventListener('input', checkKeyFormat);
+  checkKeyFormat();
 
   const tierWrap = el('div', { class: 'chips' });
   let curTier = tier;
@@ -41,6 +91,8 @@ export default async function settings() {
   const tierNotice = el('div', {});
   tierNotice.replaceChildren(...tierNoticeContent(curTier));
 
+  // 測試結果留在畫面上，不要用 toast——錯誤訊息通常很長，而且你會想照著它一步步弄
+  const testResult = el('div', {});
   const testBtn = el('button', { class: 'btn ghost sm', type: 'button', text: '測試連線' });
   testBtn.addEventListener('click', async () => {
     flushActiveInput();
@@ -48,11 +100,21 @@ export default async function settings() {
     if (!k) { toast('先貼上 API key'); return; }
     testBtn.disabled = true;
     testBtn.textContent = '測試中…';
+    testResult.replaceChildren();
     try {
-      await testKey(k, modelSel.value);
-      toast('連線成功');
+      const r = await testKey(k, modelSel.value);
+      if (r.keyOk && r.modelOk) {
+        testResult.append(el('div', { class: 'notice info' },
+          `連線成功。這把 key 可以用 ${r.models} 個模型，「${modelSel.value}」正常。`));
+      } else {
+        testResult.append(el('div', { class: 'notice danger' }, [
+          el('strong', { text: r.keyOk ? '模型有問題，key 沒事' : 'key 沒有通過驗證' }),
+          el('div', { style: 'margin-bottom:6px' }, r.hint || ''),
+          el('div', { class: 'muted' }, `Google 回的原文：${r.error}`),
+        ]));
+      }
     } catch (e) {
-      toast(`失敗：${e.message}`, 5000);
+      testResult.append(el('div', { class: 'notice danger' }, `測試失敗：${e.message}`));
     } finally {
       testBtn.disabled = false;
       testBtn.textContent = '測試連線';
@@ -62,10 +124,16 @@ export default async function settings() {
   wrap.append(el('div', { class: 'card' }, [
     el('h2', { text: 'Gemini API' }),
     field('API Key', keyInput, 'key 只存在這台裝置的瀏覽器裡，不會進 GitHub、不會傳給我。'),
-    field('模型', modelSel),
+    keyFormatNote,
+    el('label', { class: 'field' }, [
+      el('span', { text: '模型' }),
+      modelSel,
+      modelHint,
+    ]),
     el('label', { class: 'field' }, [el('span', { text: '方案' }), tierWrap]),
     tierNotice,
-    el('div', { class: 'row', style: 'margin-top:10px' }, [testBtn]),
+    el('div', { class: 'row wrap', style: 'gap:8px;margin-top:10px' }, [testBtn, fetchModelsBtn]),
+    testResult,
   ]));
 
   // ---------- 逐字稿來源 ----------

@@ -9,13 +9,39 @@ import { GLOSSARY_HINT } from './glossary.js';
 
 const ENDPOINT = 'https://generativelanguage.googleapis.com/v1beta/models';
 
-export const DEFAULT_MODEL = 'gemini-2.5-flash';
+export const DEFAULT_MODEL = 'gemini-3.6-flash';
 
-export const MODELS = [
-  { id: 'gemini-2.5-flash', label: 'gemini-2.5-flash（推薦，快又便宜）' },
-  { id: 'gemini-2.5-pro', label: 'gemini-2.5-pro（比較會整理長內容，較貴）' },
-  { id: 'gemini-2.5-flash-lite', label: 'gemini-2.5-flash-lite（最便宜）' },
+// 這份清單只是「還沒連線過」時的預設值。Google 換模型的速度比這個 App 改版快得多，
+// 所以設定頁有一顆「抓取可用模型」會直接問你的 key 實際拿得到哪些，以那份為準。
+export const FALLBACK_MODELS = [
+  { id: 'gemini-3.6-flash', label: '推薦' },
+  { id: 'gemini-3.5-flash', label: '' },
+  { id: 'gemini-3.5-flash-lite', label: '最便宜' },
 ];
+
+/** 這些是嵌入、語音合成、影像生成之類的，拿來整理文字沒有意義，不要塞進選單。 */
+const NOT_FOR_TEXT = /embedding|aqa|tts|live|image|imagen|veo|omni/i;
+
+/**
+ * 問 Google 這把 key 現在實際可以用哪些模型。
+ * 這是模型清單過期時的正解——不用等我改程式。
+ */
+export async function listModels(key) {
+  const res = await fetch(`${ENDPOINT}?pageSize=200`, {
+    headers: { 'x-goog-api-key': key },
+  });
+  if (!res.ok) {
+    let detail = '';
+    try { detail = (await res.json())?.error?.message || ''; } catch { /* 非 JSON 回應 */ }
+    throw new Error(detail || `HTTP ${res.status}`);
+  }
+  const json = await res.json();
+  return (json.models || [])
+    .filter((m) => (m.supportedGenerationMethods || []).includes('generateContent'))
+    .map((m) => ({ id: String(m.name).replace(/^models\//, ''), label: m.displayName || '' }))
+    .filter((m) => !NOT_FOR_TEXT.test(m.id))
+    .sort((a, b) => b.id.localeCompare(a.id, 'en', { numeric: true }));
+}
 
 const NO_INVENTION = `
 嚴格規則（違反就是錯誤輸出）：
@@ -66,8 +92,11 @@ async function call(parts, { schema = null, temperature = 0.2, modelId = null } 
       detail = j?.error?.message || '';
     } catch { /* 回應不是 JSON，維持空字串 */ }
     if (res.status === 400 && /API key/i.test(detail)) throw new Error('API key 無效，請到設定頁重貼');
+    if (res.status === 401) throw new Error('這把 key 被拒絕了，請到設定頁按「測試連線」看詳細訊息');
     if (res.status === 429) throw new Error('超過用量限制（免費層額度很緊），等一下再試');
-    if (res.status === 404) throw new Error(`找不到模型 ${m}，請到設定頁換一個`);
+    if (res.status === 404) {
+      throw new Error(`模型 ${m} 用不了（可能已經退役）。請到設定頁按「抓取可用模型」重新選一個`);
+    }
     throw new Error(detail || `Gemini 回了 ${res.status}`);
   }
 
@@ -91,16 +120,53 @@ async function callJSON(parts, schema, opts = {}) {
   }
 }
 
+/**
+ * 分兩段測，因為「key 有問題」跟「模型退役了」是完全不同的事，
+ * 混在一起測會讓人以為 key 壞掉，其實只是要換模型。
+ * @returns {{ keyOk: boolean, modelOk: boolean, models: number, error?: string, hint?: string }}
+ */
 export async function testKey(key, modelId) {
+  // 第一段：只驗 key，跟模型無關
+  try {
+    const models = await listModels(key);
+    var modelCount = models.length;
+  } catch (e) {
+    return { keyOk: false, modelOk: false, models: 0, error: e.message, hint: keyHint(e.message) };
+  }
+
+  // 第二段：這個模型現在還能不能用
   const res = await fetch(`${ENDPOINT}/${encodeURIComponent(modelId)}:generateContent`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', 'x-goog-api-key': key },
     body: JSON.stringify({ contents: [{ role: 'user', parts: [{ text: '回覆「ok」兩個字。' }] }] }),
   });
-  if (res.ok) return true;
+  if (res.ok) return { keyOk: true, modelOk: true, models: modelCount };
+
   let detail = '';
   try { detail = (await res.json())?.error?.message || ''; } catch { /* 非 JSON 回應 */ }
-  throw new Error(detail || `HTTP ${res.status}`);
+  return {
+    keyOk: true,
+    modelOk: false,
+    models: modelCount,
+    error: detail || `HTTP ${res.status}`,
+    hint: `key 沒問題（可用 ${modelCount} 個模型），是「${modelId}」這個模型用不了。按「抓取可用模型」換一個。`,
+  };
+}
+
+/** 把 Google 的英文錯誤翻成「所以我到底該做什麼」。 */
+function keyHint(msg) {
+  if (/API key not valid/i.test(msg)) {
+    return 'key 本身不對——可能複製時漏字或多了空白。回 Google AI Studio 重新複製一次。';
+  }
+  if (/OAuth 2 access token|ACCESS_TOKEN_TYPE_UNSUPPORTED/i.test(msg)) {
+    return 'Google 把這串當成 OAuth token 而不是 API key。AQ. 開頭的新格式金鑰目前有部分帳號會踩到這個問題，'
+      + '不是這個 App 的錯。解法是到 Google Cloud Console 的「API 和服務 → 憑證」另外建一把 AIza 開頭的金鑰'
+      + '（記得先啟用 Generative Language API）。';
+  }
+  if (/PERMISSION_DENIED|SERVICE_DISABLED/i.test(msg)) {
+    return '這把 key 所屬的專案還沒啟用 Generative Language API，去 Google Cloud Console 開啟它。';
+  }
+  return null;
 }
 
 // ---------- 逐字稿 ----------
