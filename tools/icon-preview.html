@@ -6,7 +6,7 @@
 <style>
   body { background: #12161c; color: #eef1f5; font: 15px/1.5 "Noto Sans TC", sans-serif; padding: 24px; margin: 0; }
   h2 { font-size: 14px; color: #99a3b2; margin: 26px 0 10px; font-weight: 600; }
-  .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 14px; }
+  .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 14px; }
   .cell { background: #1b212a; border: 1px solid #333d4a; border-radius: 12px; padding: 14px 10px; text-align: center; }
   .big { color: #ff9d4d; display: flex; justify-content: center; margin-bottom: 10px; }
   .small { color: #eef1f5; display: flex; justify-content: center; gap: 12px; align-items: flex-end; margin-bottom: 8px; }
@@ -32,7 +32,7 @@ function section(title, items) {
     cell.className = 'cell';
     const big = document.createElement('div');
     big.className = 'big';
-    big.append(icon(name, { size: 56 }));
+    big.append(icon(name, { size: 88 }));
     const small = document.createElement('div');
     small.className = 'small';
     small.append(icon(name, { size: 24 }), icon(name, { size: 17 }), icon(name, { size: 15 }));
@@ -45,7 +45,7 @@ function section(title, items) {
   out.append(h, g);
 }
 
-section('工項分類（14）', CATEGORIES.map((c) => ({ name: c.icon, label: c.name })));
+section(`工項分類（${CATEGORIES.length}）`, CATEGORIES.map((c) => ({ name: c.icon, label: c.name })));
 section('導覽', [
   { name: 'building', label: '專案' },
   { name: 'layers', label: '經驗庫' },

@@ -67,15 +67,16 @@ function dedupe(list) {
 
 /** 一級分類 → 第一段（工程進行情況）。自訂分類也算施工作業。 */
 const CONSTRUCTION_CATS = new Set([
-  'temp', 'survey', 'foundation', 'rebar', 'formwork', 'concrete',
-  'steel', 'facade', 'waterproof', 'mep', 'finish',
+  'temp', 'survey', 'foundation', 'rebar', 'formwork', 'concrete', 'prestress',
+  'steel', 'bridge', 'hydraulic', 'culvert', 'coating', 'waterproof', 'building',
 ]);
 
 /** 這些關鍵詞出現在子項或內文時，該筆同時歸進對應段落。 */
 const SECTION_HINTS = {
-  s2: /檢驗停留點|停留點|查驗|抽查|抽驗|複驗|放樣|軸線|圖說|施工圖|自主檢查/,
-  s3: /材料|試驗|試體|坍度|氯離子|送審|抽樣|檢測|出廠|規格|品質|進場/,
-  s4: /安全|衛生|護欄|防護|動火|局限空間|吊掛|防護具|安衛/,
+  // 施拉與灌漿是預力工程的檢驗停留點，跟一般抽查同一段
+  s2: /檢驗停留點|停留點|查驗|抽查|抽驗|複驗|放樣|軸線|圖說|施工圖|自主檢查|施拉|伸長量|灌漿|水密試驗|試水/,
+  s3: /材料|試驗|試體|坍度|氯離子|送審|抽樣|檢測|出廠|規格|品質|進場|膜厚|附著力|非破壞/,
+  s4: /安全|衛生|護欄|防護|動火|局限空間|吊掛|防護具|安衛|臨水|交維/,
   s5: /缺失|異常|不符合|改正|通知|指示|會勘|爭議|停工/,
 };
 

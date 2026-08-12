@@ -53,6 +53,29 @@ const SHAPES = {
   // 品質異常與缺失改正：警示
   warning: { d: '<path d="M12 3.5 22 20.5H2z"/><path d="M12 10v4.6"/><circle cx="12" cy="17.6" r=".6" fill="currentColor" stroke="none"/>' },
 
+  // 預力工程：兩端錨錠板 + 下垂的鋼腱 + 向外的施拉方向
+  // 刻意不畫成拱形，不然在小尺寸會跟 bridge 混在一起
+  tendon: {
+    d: '<path d="M5.5 5v14M18.5 5v14"/><path d="M5.5 9.5c4.3 7 8.7 7 13 0"/>'
+      + '<path d="M4 12H1.8M3 10.6 1.6 12 3 13.4"/><path d="M20 12h2.2M21 10.6 22.4 12 21 13.4"/>',
+  },
+  // 橋梁上部結構：橋面版 + 橋墩 + 水面
+  bridge: {
+    d: '<path d="M2 10h20"/><path d="M7 10v7M17 10v7"/><path d="M4.5 7.5V10M12 7.5V10M19.5 7.5V10"/>'
+      + '<path d="M2 20.5c2-1.3 3-1.3 5 0s3 1.3 5 0 3-1.3 5 0 3 1.3 5 0"/>',
+  },
+  // 河防與水利構造：導槽 + 閘門門葉 + 上方的啟閉機
+  // 不畫水波，水波留給 bridge，兩個都畫會在小尺寸糊成同一個東西
+  gate: {
+    d: '<circle cx="12" cy="3.4" r="1.5"/><path d="M12 4.9v2.6"/>'
+      + '<path d="M4.5 5v15M19.5 5v15"/><path d="M4.5 7.5h15v5.5h-15z"/><path d="M2.5 20h19"/>',
+  },
+  // 匯排水與管渠：箱涵斷面 + 通水流向
+  culvert: {
+    d: '<path d="M2.5 5.5h19v13h-19z"/><path d="M6.5 9h11v6h-11z"/>'
+      + '<path d="M8.6 12h6.6M13.2 9.9 15.4 12l-2.2 2.1"/>',
+  },
+
   // ---------- 導覽 ----------
 
   building: { d: '<path d="M3 21h18"/><path d="M5 21V8.5L12 4l7 4.5V21"/><path d="M9.5 21v-5h5v5"/><path d="M9.5 11.5h1M13.5 11.5h1"/>' },
@@ -118,6 +141,6 @@ export function hasIcon(name) {
 /** 新增自訂分類時可以挑的圖示。動作類的（拍照、錄音…）不放進來，語意會打架。 */
 export const PICKABLE_ICONS = [
   'note', 'fence', 'tripod', 'pile', 'rebar', 'formwork', 'slump', 'ibeam',
-  'facade', 'droplet', 'pipe', 'roller', 'crate', 'hardhat', 'warning',
-  'building', 'layers', 'waveform', 'image', 'sliders',
+  'tendon', 'bridge', 'gate', 'culvert', 'facade', 'droplet', 'pipe', 'roller',
+  'crate', 'hardhat', 'warning', 'building', 'layers', 'waveform', 'image', 'sliders',
 ];

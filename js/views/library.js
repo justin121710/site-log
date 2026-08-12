@@ -1,7 +1,7 @@
 // 經驗庫首頁：14 項內建分類 + 你自己加的分類，跨專案。
 
 import { el, setTitle, toast } from '../ui.js';
-import { CATEGORIES, isCustomCategory, addCategory } from '../taxonomy.js';
+import { CATEGORIES, BUILTIN_IDS, isCustomCategory, addCategory } from '../taxonomy.js';
 import { countByIndex } from '../db.js';
 import { icon, PICKABLE_ICONS } from '../icons.js';
 
@@ -41,7 +41,7 @@ export default async function library() {
     addBtn,
     el('p', { class: 'muted', style: 'margin:0 0 14px' },
       '同一件事在不同案場怎麼做，都收在同一個分類底下，之後要設計時可以直接比對。'
-      + '前 14 項是固定的，底下可以自己加。'),
+      + `前 ${BUILTIN_IDS.size} 項是固定的，底下可以自己加。`),
     list,
   );
 
