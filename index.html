@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1">
 <title>監造工地筆記</title>
-<meta name="description" content="工地現場記錄與經驗庫：專案導向 + 類型導向">
+<meta name="description" content="工地現場記錄：專案導向 + 工項導向">
 <link rel="manifest" href="manifest.webmanifest">
 <meta name="theme-color" content="#12161c">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -19,7 +19,10 @@
 <header id="topbar">
   <button id="btn-back" class="icon-btn" hidden aria-label="返回"></button>
   <h1 id="title">監造工地筆記</h1>
-  <span id="tier-badge" class="tier tier-off" title="Gemini 方案">未設定</span>
+  <a id="settings-btn" href="#/settings" aria-label="設定">
+    <span id="tier-badge" class="tier tier-off"></span>
+    <span class="ico"></span>
+  </a>
 </header>
 
 <main id="view" aria-live="polite">
@@ -28,8 +31,7 @@
 
 <nav id="tabbar">
   <a href="#/" data-tab="projects"><span class="ico"></span>專案</a>
-  <a href="#/lib" data-tab="lib"><span class="ico"></span>經驗庫</a>
-  <a href="#/settings" data-tab="settings"><span class="ico"></span>設定</a>
+  <a href="#/lib" data-tab="lib"><span class="ico"></span>工項分類</a>
 </nav>
 
 <div id="toast" role="status"></div>

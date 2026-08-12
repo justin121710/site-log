@@ -99,6 +99,23 @@ body {
 /* SVG icon 一律吃 currentColor，放進什麼顏色的容器就是什麼顏色 */
 .icon { display: block; flex: none; }
 
+/* 設定入口跟 AI 狀態合併成同一顆：狀態要一直看得見，但不值得佔一個分頁 */
+#settings-btn {
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 36px;
+  padding: 0 10px 0 6px;
+  border-radius: 999px;
+  background: var(--surface-2);
+  color: var(--text-dim);
+  text-decoration: none;
+  -webkit-tap-highlight-color: transparent;
+}
+#settings-btn .ico { display: flex; }
+#settings-btn.active { color: var(--accent); }
+
 .tier {
   flex: none;
   padding: 3px 9px;
@@ -248,6 +265,63 @@ input:focus, select:focus, textarea:focus {
 }
 
 .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 0 10px; }
+
+/* ---------- 工項分類的方格 ---------- */
+
+/* 固定欄數而不是 auto-fill：在窄機身上也保證一排三個，不會突然變成兩個 */
+.cat-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 9px;
+}
+@media (min-width: 540px) { .cat-grid { grid-template-columns: repeat(4, 1fr); } }
+@media (min-width: 720px) { .cat-grid { grid-template-columns: repeat(5, 1fr); } }
+
+.cat-tile {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  aspect-ratio: 1;
+  padding: 8px 5px;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: var(--surface);
+  color: var(--text);
+  text-decoration: none;
+  text-align: center;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.cat-tile .cat-name {
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1.25;
+  word-break: break-word;
+}
+
+/* 有東西的分類才點亮，一眼看得出哪幾類已經累積起來了 */
+.cat-tile .cat-count {
+  position: absolute;
+  top: 6px;
+  right: 7px;
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--text-dim);
+}
+.cat-tile.has-items { border-color: var(--accent); color: var(--accent); }
+.cat-tile.has-items .cat-count { color: var(--accent); }
+.cat-tile.has-items .cat-name { color: var(--text); }
+
+.cat-tile .cat-custom {
+  position: absolute;
+  top: 6px;
+  left: 7px;
+  font-size: 10px;
+  color: var(--text-dim);
+}
 
 /* ---------- chips（分類多選）---------- */
 

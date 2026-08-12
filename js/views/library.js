@@ -1,4 +1,4 @@
-// 經驗庫首頁：14 項內建分類 + 你自己加的分類，跨專案。
+// 工項分類首頁：內建分類 + 你自己加的分類，跨專案。
 
 import { el, setTitle, toast } from '../ui.js';
 import { CATEGORIES, BUILTIN_IDS, isCustomCategory, addCategory } from '../taxonomy.js';
@@ -6,24 +6,22 @@ import { countByIndex } from '../db.js';
 import { icon, PICKABLE_ICONS } from '../icons.js';
 
 export default async function library() {
-  setTitle('經驗庫');
+  setTitle('工項分類');
   const wrap = el('div');
-  const list = el('div');
+  const list = el('div', { class: 'cat-grid' });
 
   async function renderList() {
     list.replaceChildren();
     for (const c of CATEGORIES) {
       const n = await countByIndex('entries', 'categoryIds', IDBKeyRange.only(c.id));
-      list.append(el('a', { href: `#/lib/${c.id}`, class: 'card' }, [
-        el('div', { class: 'row' }, [
-          icon(c.icon, { size: 24 }),
-          el('strong', { text: c.name, style: 'font-size:16px' }),
-          isCustomCategory(c.id)
-            ? el('span', { class: 'badge badge-cat', text: '自訂' })
-            : null,
-          el('span', { class: 'spacer' }),
-          el('span', { class: n ? '' : 'muted', text: `${n} 筆` }),
-        ]),
+      list.append(el('a', {
+        href: `#/lib/${c.id}`,
+        class: `cat-tile ${n ? 'has-items' : ''}`.trim(),
+      }, [
+        isCustomCategory(c.id) ? el('span', { class: 'cat-custom', text: '自訂' }) : null,
+        el('span', { class: 'cat-count', text: n ? String(n) : '' }),
+        icon(c.icon, { size: 28 }),
+        el('span', { class: 'cat-name', text: c.name }),
       ]));
     }
   }

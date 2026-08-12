@@ -1,4 +1,4 @@
-// 經驗庫的單一分類：跨專案列出同一類的記錄，可以只看已確認的。
+// 工項分類的單一分類：跨專案列出同一類的記錄，可以只看已確認的。
 
 import { el, setTitle, fmtDate, fmtTime, toast, today, confirmDialog } from '../ui.js';
 import {
@@ -87,7 +87,7 @@ export default async function category({ catId }) {
 
     for (const [pid, group] of byProject) {
       const p = projects[pid];
-      const label = !pid ? '未歸專案（直接記在經驗庫）'
+      const label = !pid ? '未歸專案（直接記在工項分類）'
         : p?.name || '（已刪除的專案）';
       list.append(el('h3', { style: 'margin:18px 0 8px;font-size:14px' }, [
         el('span', { text: label }),
@@ -140,7 +140,7 @@ export default async function category({ catId }) {
     }
   }
 
-  // 在這裡直接開一筆記錄，不綁任何專案。用在「這件事我想記進經驗庫，
+  // 在這裡直接開一筆記錄，不綁任何專案。用在「這件事我想記進工項分類，
   // 但它不屬於我手上任何一個案子」——例如在別的工地看到的做法。
   const addBtn = el('button', { class: 'btn block', type: 'button', style: 'margin-bottom:12px' },
     [icon('plus'), `在「${cat.name}」新增一筆`]);

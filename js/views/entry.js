@@ -30,7 +30,7 @@ export default async function entryView(params) {
     : await get('entries', params.entryId);
   if (!e) throw new Error('找不到這筆記錄');
 
-  // 從經驗庫直接建的記錄沒有專案，這是刻意允許的，不能當成錯誤。
+  // 從工項分類直接建的記錄沒有專案，這是刻意允許的，不能當成錯誤。
   let project = e.projectId ? await get('projects', e.projectId) : null;
 
   setTitle(isNew ? '新增記錄' : fmtDate(e.date));
@@ -368,7 +368,7 @@ export default async function entryView(params) {
 
   // ---------- 歸屬專案 ----------
   const projectSel = el('select');
-  projectSel.append(el('option', { value: '' }, '未歸專案（只進經驗庫）'));
+  projectSel.append(el('option', { value: '' }, '未歸專案（只進工項分類）'));
   for (const p of await listProjects()) {
     projectSel.append(el('option', { value: p.id, selected: p.id === e.projectId },
       p.name || '（未命名專案）'));
@@ -383,7 +383,7 @@ export default async function entryView(params) {
   wrap.append(el('div', { class: 'card' }, [
     el('h2', { text: '歸屬專案' }),
     el('p', { class: 'muted', style: 'margin:-4px 0 10px' },
-      '沒有專案也可以記——它一樣會出現在經驗庫，只是不會被算進任何一天的監造日報。'
+      '沒有專案也可以記——它一樣會出現在工項分類，只是不會被算進任何一天的監造日報。'
       + '之後想掛到某個案子，隨時在這裡改。'),
     projectSel,
   ]));
@@ -414,7 +414,7 @@ export default async function entryView(params) {
   wrap.append(el('div', { class: 'card' }, [el('h2', { text: '備註' }), noteBox]));
 
   // ---------- 底部 ----------
-  /** 回到來的地方：有專案就回那天，沒有就回經驗庫的分類頁。 */
+  /** 回到來的地方：有專案就回那天，沒有就回工項分類的分類頁。 */
   const backTarget = () => {
     if (e.projectId) return `#/p/${e.projectId}/day/${e.date}`;
     return e.categoryIds.length ? `#/lib/${e.categoryIds[0]}` : '#/lib';

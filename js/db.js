@@ -38,7 +38,7 @@ function openDB() {
         s.createIndex('projectId', 'projectId');
         s.createIndex('projectDate', ['projectId', 'date']);
         s.createIndex('capturedAt', 'capturedAt');
-        // multiEntry：一筆記錄有多個類型，經驗庫要能用任一類型查到它
+        // multiEntry：一筆記錄有多個類型，工項分類要能用任一類型查到它
         s.createIndex('categoryIds', 'categoryIds', { multiEntry: true });
       }
       if (!db.objectStoreNames.contains('media')) {

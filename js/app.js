@@ -77,12 +77,14 @@ async function render() {
 }
 
 function syncTabs(path) {
+  // 設定不在底部分頁裡，它是右上角那顆，所以在設定頁時兩個分頁都不亮
   const active = path.startsWith('/lib') ? 'lib'
     : path.startsWith('/settings') ? 'settings'
     : 'projects';
   for (const a of document.querySelectorAll('#tabbar a')) {
     a.classList.toggle('active', a.dataset.tab === active);
   }
+  document.getElementById('settings-btn').classList.toggle('active', active === 'settings');
 }
 
 backBtn.addEventListener('click', () => history.back());
@@ -92,18 +94,24 @@ export async function refreshTierBadge() {
   const badge = document.getElementById('tier-badge');
   const key = await getSetting('geminiApiKey', '');
   const tier = await getSetting('geminiTier', '');
+  // 標籤要短——它跟齒輪擠在頂端同一顆按鈕裡，長字會把標題壓掉
+  const btn = document.getElementById('settings-btn');
   if (!await getSetting('aiEnabled', true)) {
     badge.className = 'tier tier-off';
-    badge.textContent = 'AI 已關閉';
+    badge.textContent = 'AI 關';
+    btn.title = '設定（AI 已關閉）';
   } else if (!key) {
     badge.className = 'tier tier-off';
-    badge.textContent = '未設定 AI';
+    badge.textContent = '未設定';
+    btn.title = '設定（還沒設定 AI）';
   } else if (tier === 'paid') {
     badge.className = 'tier tier-paid';
-    badge.textContent = '付費層';
+    badge.textContent = '付費';
+    btn.title = '設定（Gemini 付費層）';
   } else {
     badge.className = 'tier tier-free';
-    badge.textContent = '免費層';
+    badge.textContent = '免費';
+    btn.title = '設定（Gemini 免費層，內容可能被 Google 用於改善產品）';
   }
 }
 
@@ -116,10 +124,11 @@ window.addEventListener('error', (e) => {
 /** 外殼的 icon 也從 icons.js 來，才不會有兩份圖示定義各走各的。 */
 function paintChromeIcons() {
   backBtn.replaceChildren(icon('chevronLeft', { size: 24 }));
-  const tabIcons = { projects: 'building', lib: 'layers', settings: 'sliders' };
+  const tabIcons = { projects: 'building', lib: 'layers' };
   for (const a of document.querySelectorAll('#tabbar a')) {
     a.querySelector('.ico')?.replaceChildren(icon(tabIcons[a.dataset.tab], { size: 22 }));
   }
+  document.querySelector('#settings-btn .ico').replaceChildren(icon('sliders', { size: 20 }));
 }
 
 (async function boot() {

@@ -178,7 +178,7 @@ export default async function settings() {
     el('h2', { text: '要不要用 AI' }),
     el('p', { class: 'muted', style: 'margin:-4px 0 10px' },
       '關掉之後所有 AI 按鈕都會消失，這個 App 就是一個純手動的工地記錄本——'
-      + '拍照、錄音、鍵盤聽寫、分類、經驗庫、浮水印、日報分段、匯出備份全部照常。'
+      + '拍照、錄音、鍵盤聽寫、工項分類、浮水印、日報分段、匯出備份全部照常。'
       + '以前整理過的內容不會消失，只是不能再產生新的。'),
     el('label', { class: 'row', style: 'gap:10px;cursor:pointer' }, [
       aiBox,

@@ -1,7 +1,7 @@
 {
   "name": "監造工地筆記",
   "short_name": "工地筆記",
-  "description": "工地現場記錄與經驗庫：專案導向 + 類型導向",
+  "description": "工地現場記錄：專案導向 + 工項導向",
   "start_url": "./",
   "scope": "./",
   "display": "standalone",
