@@ -1,7 +1,7 @@
 // 設定：Gemini key／方案、逐字稿預設來源、代號對照表、敏感詞、儲存空間、備份。
 
 import { el, setTitle, field, input, toast, fmtBytes, confirmDialog, flushActiveInput } from '../ui.js';
-import { getSetting, setSetting, storageEstimate, listProjects } from '../db.js';
+import { getSetting, setSetting, storageEstimate, listProjects, isPersisted } from '../db.js';
 import { refreshTierBadge } from '../app.js';
 import { DEFAULT_MODEL, FALLBACK_MODELS, testKey, listModels } from '../gemini.js';
 import { getAliases, setAliases, getExtraSensitive, setExtraSensitive } from '../redact.js';
@@ -91,6 +91,29 @@ export default async function settings() {
   const tierNotice = el('div', {});
   tierNotice.replaceChildren(...tierNoticeContent(curTier));
 
+  // 清除 key 必須是一個明確的動作，不能靠「把欄位清空再存檔」——
+  // 那條路太容易在你沒察覺的時候被觸發。
+  const clearKeyBtn = el('button', {
+    class: 'btn ghost sm',
+    type: 'button',
+    text: '清除 key',
+    style: 'color:var(--danger)',
+  });
+  clearKeyBtn.addEventListener('click', async () => {
+    if (!keyInput.value.trim() && !await getSetting('geminiApiKey', '')) { toast('本來就沒有 key'); return; }
+    if (!await confirmDialog({
+      title: '清除已存的 API key？',
+      body: '之後要用 AI 功能得重新貼一次。記錄與照片不受影響。',
+      okLabel: '清除',
+    })) return;
+    keyInput.value = '';
+    await setSetting('geminiApiKey', '');
+    checkKeyFormat();
+    renderKeyStatus();
+    await refreshTierBadge();
+    toast('已清除');
+  });
+
   // 測試結果留在畫面上，不要用 toast——錯誤訊息通常很長，而且你會想照著它一步步弄
   const testResult = el('div', {});
   const testBtn = el('button', { class: 'btn ghost sm', type: 'button', text: '測試連線' });
@@ -177,7 +200,7 @@ export default async function settings() {
     ]),
     el('label', { class: 'field' }, [el('span', { text: '方案' }), tierWrap]),
     tierNotice,
-    el('div', { class: 'row wrap', style: 'gap:8px;margin-top:10px' }, [testBtn, fetchModelsBtn]),
+    el('div', { class: 'row wrap', style: 'gap:8px;margin-top:10px' }, [testBtn, fetchModelsBtn, clearKeyBtn]),
     testResult,
   ]));
 
@@ -290,7 +313,11 @@ export default async function settings() {
   saveBtn.addEventListener('click', async () => {
     flushActiveInput();
     await setSetting('aiEnabled', aiBox.checked);
-    await setSetting('geminiApiKey', keyInput.value.trim());
+    // 欄位空白時「不動」已存的 key。之前是無條件覆寫，等於只要在任何情況下
+    // 欄位沒被填回值（頁面沒完整渲染、輸入法沒同步、瀏覽器清掉密碼欄…），
+    // 按一下儲存就把 key 洗掉。要清除請按底下的「清除 key」。
+    const typedKey = keyInput.value.trim();
+    if (typedKey) await setSetting('geminiApiKey', typedKey);
     await setSetting('geminiTier', curTier);
     await setSetting('geminiModel', modelSel.value);
     await setSetting('transcriptSource', curSrc);
@@ -324,6 +351,13 @@ export default async function settings() {
     backupBtn,
     est ? el('p', { class: 'muted', style: 'margin-top:10px' },
       `已用 ${fmtBytes(est.usage)}　可用約 ${fmtBytes(est.quota)}`) : null,
+    await persistenceNotice(),
+    el('div', { class: 'notice warn', style: 'margin-top:10px' }, [
+      el('strong', { text: '會讓所有資料消失的三件事' }),
+      '① 把主畫面的 App 圖示刪掉重裝　② 在 Safari 設定裡清除網站資料　'
+      + '③ 按下面的「清空所有資料」。'
+      + '這三件事會連專案、照片、錄音、API key 一起清掉，只有匯出的備份救得回來。',
+    ]),
   ]));
 
   const wipe = el('button', {
@@ -346,6 +380,26 @@ export default async function settings() {
   wrap.append(wipe);
 
   return wrap;
+}
+
+/**
+ * 讓使用者看得到瀏覽器到底有沒有答應幫他留著資料。
+ * 沒答應的話，iOS 在空間不足或長期沒開時就可能把整個資料庫清掉。
+ */
+async function persistenceNotice() {
+  const p = await isPersisted();
+  if (p === true) {
+    return el('p', { class: 'muted', style: 'margin-top:6px' },
+      '儲存狀態：持久化已生效，系統不會因為清空間而自動刪掉這些資料。');
+  }
+  if (p === false) {
+    return el('div', { class: 'notice warn', style: 'margin-top:10px' }, [
+      el('strong', { text: '儲存狀態：未取得持久化' }),
+      '瀏覽器沒有答應幫你長期保留，空間不足或長期沒開啟時資料可能被清掉。'
+      + '把這個網站「加到主畫面」通常就會拿到，並請更勤快地匯出備份。',
+    ]);
+  }
+  return null; // 這個瀏覽器沒有這個 API，不要亂講
 }
 
 /** 只露頭尾，足夠讓你認出是不是同一把，但不會整串顯示在螢幕上。 */

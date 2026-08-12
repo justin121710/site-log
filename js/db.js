@@ -284,3 +284,12 @@ export async function requestPersistence() {
   if (await navigator.storage.persisted?.()) return true;
   return navigator.storage.persist();
 }
+
+/**
+ * 瀏覽器有沒有真的答應幫你留著。
+ * @returns {Promise<boolean|null>} null = 這個瀏覽器沒有這個 API，無從得知
+ */
+export async function isPersisted() {
+  if (!navigator.storage?.persisted) return null;
+  return navigator.storage.persisted();
+}
