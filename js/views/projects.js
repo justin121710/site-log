@@ -18,9 +18,7 @@ export default async function projects() {
     nagBtn.addEventListener('click', () => exportDialog({ title: '全部資料' }));
     wrap.append(el('div', { class: 'notice warn' }, [
       el('strong', { text: days === null ? '你還沒備份過' : `已經 ${days} 天沒備份了` }),
-      el('div', { style: 'margin-bottom:9px' },
-        'iOS 在空間不足時會清掉瀏覽器資料，手機掉了也一樣。'
-        + `照片與錄音都只在這台裝置上，重做不回來。建議至少每 ${BACKUP_NAG_DAYS} 天匯出一次。`),
+      el('div', { style: 'margin-bottom:9px' }, '照片與錄音只在這台裝置上，重做不回來。'),
       nagBtn,
     ]));
   }
@@ -33,7 +31,6 @@ export default async function projects() {
   if (!rows.length) {
     wrap.append(el('div', { class: 'empty' }, [
       el('strong', { text: '還沒有專案' }),
-      el('p', { class: 'muted', text: '先建一個案場，之後拍的每一筆記錄都會歸到它底下。' }),
     ]));
     return wrap;
   }

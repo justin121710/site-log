@@ -41,7 +41,6 @@ export default async function report({ projectId, date }) {
   if (!entries.length) {
     wrap.append(el('div', { class: 'empty' }, [
       el('strong', { text: '這天還沒有記錄' }),
-      el('p', { class: 'muted' }, '日報是從當天的記錄整理出來的，先去記幾筆。'),
       el('a', { href: `#/p/${projectId}/day/${date}`, class: 'btn ghost', style: 'margin-top:10px' }, '回到這天'),
     ]));
     return wrap;
@@ -85,8 +84,7 @@ export default async function report({ projectId, date }) {
     const material = buildMaterial({ project, day, entries, date });
     const toSend = await confirmUpload(material, {
       title: '要送今天的記錄給 Gemini 嗎？',
-      extraNote: '只送文字，照片不會上傳。AI 被禁止補充任何你沒寫的內容，'
-        + '找不到對應內容的段落會寫「本日無」。',
+      extraNote: '只送文字，照片不會上傳。',
     });
     if (toSend === null) return;
 
@@ -97,7 +95,7 @@ export default async function report({ projectId, date }) {
       for (const s of REPORT_SECTIONS) boxes[s.key].value = revertAliases(out[s.key] || '', aliases);
       freeBox.value = revertAliases(out.freeSummary || '', aliases);
       await persist(false);
-      toast('產生好了。這是草稿，送出前請自己逐段核對。', 5000);
+      toast('產生好了，請自己逐段核對', 4000);
     } catch (err) {
       toast(err.message, 5000);
     } finally {
@@ -121,7 +119,7 @@ export default async function report({ projectId, date }) {
     for (const s of REPORT_SECTIONS) boxes[s.key].value = out[s.key];
     freeBox.value = out.freeSummary;
     await persist(false);
-    toast('已依分類把今天的記錄分好段。文字全是你自己寫的，請自己調整通順。', 6000);
+    toast('已依分類分好段', 3000);
   });
 
   async function persist(quiet = true) {
@@ -146,15 +144,9 @@ export default async function report({ projectId, date }) {
 
   const aiEnabled = await getSetting('aiEnabled', true);
 
-  const statusNotice = el('div', { class: 'notice warn' }, aiEnabled
-    ? [
-      el('strong', { text: '產出的日報是草稿，不是可以直接交出去的表報。' }),
-      '每一段都要自己核對過。AI 被禁止編造，但語音辨識錯字、分段錯位還是會發生。',
-    ]
-    : [
-      el('strong', { text: '本機草稿只是把你的記錄依分類分段。' }),
-      '文字全部是你自己寫的，不會多一個字，但也不會幫你潤稿。請自己調整通順再交出去。',
-    ]);
+  // 這一句留著但縮短：監造有法律責任，這是唯一提醒「產出不能直接信」的地方
+  const statusNotice = el('div', { class: 'notice warn' },
+    aiEnabled ? '草稿，送出前請自己逐段核對。' : '依分類分段，文字全是你自己寫的。');
 
   // ---------- 匯出 ----------
   const copyBtn = el('button', { class: 'btn ghost', type: 'button', text: '複製全文' });
@@ -261,10 +253,6 @@ function exportChoiceDialog() {
 
     el('div', { class: 'muted', style: 'margin:14px 0 6px;font-size:13px' }, '照片表一頁幾張'),
     mkGroup([[2, '2 張（大，看得出細節）'], [4, '4 張（省紙）']], () => perPage, (v) => { perPage = v; }),
-
-    el('div', { class: 'notice info', style: 'margin-top:14px' },
-      '產生的是一個 .html 檔，照片直接嵌在裡面，單一個檔就是完整報表。'
-      + '存到「檔案」後用 Safari 開啟 → 分享 → 列印 → 兩指外推預覽圖 → 分享 → 儲存到檔案，就是 PDF。'),
 
     el('menu', {}, [cancel, ok]),
   ]));

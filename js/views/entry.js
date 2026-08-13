@@ -130,7 +130,7 @@ export default async function entryView(params) {
       el('span', { class: 'spacer' }),
       el('span', { class: 'muted mono', text: fmtTime(e.capturedAt) }),
     ]),
-    el('p', { class: 'muted', style: 'margin:6px 0 10px' }, '照片只存在這台裝置，不會上傳。'),
+    el('p', { class: 'muted', style: 'margin:6px 0 10px' }, '照片不會上傳。'),
     el('div', { class: 'row', style: 'gap:8px;margin-bottom:10px' }, [shootBtn, albumBtn]),
     thumbs,
   ]));
@@ -179,9 +179,6 @@ export default async function entryView(params) {
 
   const audioCard = el('div', { class: 'card' }, [
     el('h2', { text: '錄音' }),
-    el('div', { class: 'notice info' },
-      'iOS 上螢幕一鎖或切到別的 App，錄音就會中斷。請讓螢幕開著，講完就按停止。'
-      + '長時間口述建議用 iOS 語音備忘錄錄好再匯入。'),
     isRecordingSupported()
       ? el('div', { class: 'row', style: 'gap:8px;margin-bottom:8px' }, [recBtn, importBtn, recStatus])
       : el('div', { class: 'row', style: 'gap:8px;margin-bottom:8px' }, [
@@ -194,7 +191,7 @@ export default async function entryView(params) {
 
   // ---------- 逐字稿 ----------
   const transcriptBox = el('textarea', {
-    placeholder: '按鍵盤上的麥克風鍵直接講，或自己打。\n例：地下二樓 X3 到 Y5 那根柱子的主筋續接，續接位置看起來太集中。',
+    placeholder: '按鍵盤上的麥克風鍵直接講，或自己打。',
   });
   transcriptBox.value = e.transcript || '';
   transcriptBox.addEventListener('input', () => {
@@ -216,8 +213,6 @@ export default async function entryView(params) {
 
   wrap.append(el('div', { class: 'card' }, [
     el('h2', { text: '逐字稿' }),
-    el('p', { class: 'muted', style: 'margin:-4px 0 10px' },
-      '點進文字框後按鍵盤上的麥克風鍵，講的話會直接變成字，不經過這個 App 的網路。'),
     transcriptBox,
     el('div', { class: 'row wrap', style: 'gap:8px;margin-top:8px' }, [fixBtn]),
   ]));
@@ -270,11 +265,7 @@ export default async function entryView(params) {
     flushActiveInput();
     const raw = transcriptBox.value.trim();
     if (!raw) { toast('先有逐字稿才有東西可以整理'); return; }
-    const toSend = await confirmUpload(raw, {
-      title: '要送這段文字給 Gemini 嗎？',
-      extraNote: 'AI 只會修錯字、整理通順、抽出樓層／軸線／分類。'
-        + '它被明確禁止補充任何你沒說的工程見解或規範條號。',
-    });
+    const toSend = await confirmUpload(raw, { title: '要送這段文字給 Gemini 嗎？' });
     if (toSend === null) return;
 
     aiBtn.disabled = true;
@@ -292,7 +283,7 @@ export default async function entryView(params) {
       await saveEntry(e);
       renderAI();
       renderCats();
-      toast('整理好了。內容標示為「未查證」，確認過再勾。', 4000);
+      toast('整理好了，標示為未查證', 3000);
     } catch (err) {
       toast(err.message, 5000);
     } finally {
@@ -406,9 +397,6 @@ export default async function entryView(params) {
 
   wrap.append(el('div', { class: 'card' }, [
     el('h2', { text: '歸屬專案' }),
-    el('p', { class: 'muted', style: 'margin:-4px 0 10px' },
-      '沒有專案也可以記——它一樣會出現在工項分類，只是不會被算進任何一天的監造日報。'
-      + '之後想掛到某個案子，隨時在這裡改。'),
     projectSel,
   ]));
 
@@ -438,8 +426,7 @@ export default async function entryView(params) {
           e.gps.source === 'exif' ? '來自照片' : '來自手機定位'),
       ]));
     } else {
-      gpsBox.append(el('p', { class: 'muted', style: 'margin:0' },
-        '沒有座標。iOS 用相機直拍不會附座標，手機定位在橋下或涵洞裡也常抓不到——不影響記錄。'));
+      gpsBox.append(el('p', { class: 'muted', style: 'margin:0' }, '沒有座標'));
     }
   }
   renderGps();
@@ -492,8 +479,6 @@ export default async function entryView(params) {
 
   defectCard.append(
     el('h2', { text: '缺失追蹤' }),
-    el('p', { class: 'muted', style: 'margin:-4px 0 10px' },
-      '改正通常是幾天後的另一筆記錄。填同一個單號，追蹤表才串得起來。'),
     el('div', { class: 'row', style: 'gap:8px;align-items:flex-end' }, [
       el('label', { class: 'field', style: 'flex:1;margin:0' }, [
         el('span', { text: '缺失單號' }),
@@ -514,7 +499,7 @@ export default async function entryView(params) {
   wrap.append(defectCard);
 
   // ---------- 備註 ----------
-  const noteBox = el('textarea', { placeholder: '自己補充的文字（不會送給 AI，除非你在上面按整理）', style: 'min-height:90px' });
+  const noteBox = el('textarea', { placeholder: '備註', style: 'min-height:90px' });
   noteBox.value = e.note || '';
   noteBox.addEventListener('input', () => { e.note = noteBox.value; autosave(); });
   wrap.append(el('div', { class: 'card' }, [el('h2', { text: '備註' }), noteBox]));
@@ -675,7 +660,7 @@ async function openPhoto(m, entry, project, allowImageUpload, onChange) {
     const setAskLabel = (busy) => askBtn.replaceChildren(
       icon('sparkle', { size: 16 }), busy ? '詢問中…' : '問 AI 這張照片');
     askBtn.addEventListener('click', async () => {
-      const q = prompt('想問什麼？（AI 只會描述看到什麼，不會判斷合不合格）');
+      const q = prompt('想問什麼？');
       if (!q) return;
       const ok = await confirmDialog({
         title: '要把這張照片上傳嗎？',
@@ -707,7 +692,7 @@ async function openPhoto(m, entry, project, allowImageUpload, onChange) {
 
   dlg.append(
     img,
-    el('div', { class: 'muted', style: 'margin-top:12px;font-size:13px' }, '這張照片在報表上的標籤'),
+    el('div', { class: 'muted', style: 'margin-top:12px;font-size:13px' }, '標籤'),
     tagChips,
     el('div', { style: 'margin-top:10px' }, [capInput]),
     actions,

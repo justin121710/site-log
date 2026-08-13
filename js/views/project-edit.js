@@ -21,8 +21,7 @@ export default async function projectEdit({ projectId }) {
   wrap.append(el('div', { class: 'card' }, [
     el('h2', { text: '基本資料' }),
     mk('name', '工程名稱', { placeholder: '例：○○捷運工程 CJ123 標' }),
-    mk('code', '代號', { placeholder: '例：A案' },
-      '送 AI 之前會用這個代號取代真實工程名稱。留空就不替換。'),
+    mk('code', '代號', { placeholder: '例：A案' }),
     el('div', { class: 'grid2' }, [
       mk('contractNo', '契約編號'),
       mk('agency', '主辦機關'),
@@ -75,9 +74,6 @@ export default async function projectEdit({ projectId }) {
 
   wrap.append(el('div', { class: 'card' }, [
     el('h2', { text: '工址' }),
-    el('p', { class: 'muted', style: 'margin:-4px 0 12px' },
-      '填一次就好，之後照片浮水印、日報、匯出都會帶這個。'
-      + '工地內的相對位置（樁號、墩號、左右岸）記在每一筆記錄裡，不用寫在這。'),
     el('div', { class: 'grid2' }, [
       field('縣市', countySel),
       field('鄉鎮市區', districtSel),
@@ -89,8 +85,6 @@ export default async function projectEdit({ projectId }) {
 
   wrap.append(el('div', { class: 'card' }, [
     el('h2', { text: '工期與進度' }),
-    el('p', { class: 'muted', style: 'margin:-4px 0 12px' },
-      '這幾欄會自動帶進每天的監造日報表頭，建一次就好。'),
     el('div', { class: 'grid2' }, [
       mk('startDate', '開工日期', { type: 'date' }),
       mk('plannedEndDate', '預定竣工日期', { type: 'date' }),

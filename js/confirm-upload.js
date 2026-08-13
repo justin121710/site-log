@@ -20,11 +20,10 @@ export async function confirmUpload(rawText, opts = {}) {
 
   body.append(el('h2', { text: opts.title || '確認要送出的內容' }));
 
+  // 這一句是資料真正要離開裝置的那一刻，留著
   if (tier !== 'paid') {
-    body.append(el('div', { class: 'notice warn' }, [
-      el('strong', { text: '目前是免費層' }),
-      '送出的內容可能被 Google 用於改善產品，也可能被人工審閱。',
-    ]));
+    body.append(el('div', { class: 'notice warn' },
+      '免費層：內容可能被 Google 用於改善產品，也可能被人工審閱。'));
   }
 
   if (opts.audioNote) {
@@ -36,10 +35,8 @@ export async function confirmUpload(rawText, opts = {}) {
 
   if (sensitiveHits.length) {
     body.append(el('div', { class: 'notice danger' }, [
-      el('strong', { text: `偵測到 ${sensitiveHits.length} 個敏感詞還在內容裡` }),
+      el('strong', { text: `偵測到 ${sensitiveHits.length} 個敏感詞` }),
       sensitiveHits.join('、'),
-      el('div', { style: 'margin-top:4px' },
-        '可以到「設定 → 代號對照表」加一組替換，或直接改掉下面的文字。'),
     ]));
   }
 
@@ -51,7 +48,7 @@ export async function confirmUpload(rawText, opts = {}) {
   }
 
   body.append(el('p', { class: 'muted', style: 'margin:12px 0 6px' },
-    '以下是實際會離開這台裝置的文字，你可以直接在這裡修改：'));
+    '實際會送出的文字，可以直接改：'));
 
   const ta = el('textarea', { style: 'min-height:180px' });
   ta.value = text;
@@ -86,8 +83,6 @@ export async function confirmUpload(rawText, opts = {}) {
 export async function confirmAudioUpload(seconds) {
   return confirmUpload('', {
     title: '要把這段錄音送到 Gemini 嗎？',
-    audioNote: `整段 ${Math.round(seconds)} 秒的音訊都會上傳。`
-      + '如果錄到了別人講話、或提到不該外流的名字，請改用 iOS 鍵盤聽寫自己打。',
-    extraNote: '上面的文字框可以留空，它只是給你補充說明用的（會一起送出）。',
+    audioNote: `整段 ${Math.round(seconds)} 秒的音訊都會上傳。`,
   });
 }

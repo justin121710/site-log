@@ -71,8 +71,6 @@ export default async function category({ catId }) {
     if (!rows.length) {
       list.append(el('div', { class: 'empty' }, [
         el('strong', { text: all.length ? '這個篩選沒有結果' : '這個分類還沒有東西' }),
-        el('p', { class: 'muted' },
-          all.length ? '換一個子項或關掉「只看已確認」。' : '去記幾筆，勾上這個分類就會出現在這裡。'),
       ]));
       return;
     }

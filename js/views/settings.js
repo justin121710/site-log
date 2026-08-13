@@ -33,8 +33,7 @@ export default async function settings() {
   }
   fillModels(FALLBACK_MODELS, model);
 
-  const modelHint = el('div', { class: 'muted', style: 'margin-top:6px' },
-    'Google 換模型的速度比這個 App 改版快。跳出「模型用不了」就按下面這顆重抓。');
+  const modelHint = el('div', { class: 'muted', style: 'margin-top:6px' }, '');
 
   const fetchModelsBtn = el('button', { class: 'btn ghost sm', type: 'button', text: '抓取可用模型' });
   fetchModelsBtn.addEventListener('click', async () => {
@@ -66,8 +65,7 @@ export default async function settings() {
     keyFormatNote.replaceChildren();
     if (!k || k.startsWith('AQ.') || k.startsWith('AQ') || k.startsWith('AIza')) return;
     keyFormatNote.append(el('div', { class: 'notice warn' },
-      '這串不太像 Gemini API key（正常是 AQ. 或 AIza 開頭）。'
-      + '確認你複製的是 Google AI Studio 的 API key，不是專案 ID 或 OAuth token。'));
+      '這串不太像 API key（正常是 AQ. 或 AIza 開頭）。'));
   };
   keyInput.addEventListener('input', checkKeyFormat);
   checkKeyFormat();
@@ -176,22 +174,16 @@ export default async function settings() {
 
   wrap.append(el('div', { class: 'card' }, [
     el('h2', { text: '要不要用 AI' }),
-    el('p', { class: 'muted', style: 'margin:-4px 0 10px' },
-      '關掉之後所有 AI 按鈕都會消失，這個 App 就是一個純手動的工地記錄本——'
-      + '拍照、錄音、鍵盤聽寫、工項分類、浮水印、日報分段、匯出備份全部照常。'
-      + '以前整理過的內容不會消失，只是不能再產生新的。'),
     el('label', { class: 'row', style: 'gap:10px;cursor:pointer' }, [
       aiBox,
-      el('span', { text: '使用 Gemini（需要 API key 與額度）' }),
+      el('span', { text: '使用 Gemini' }),
     ]),
     keyStatus,
   ]));
 
   addAiCard(el('div', { class: 'card' }, [
     el('h2', { text: 'Gemini API' }),
-    field('API Key', keyInput,
-      'key 只存在這台裝置的瀏覽器裡，不會進 GitHub、不會傳給我，也刻意不放進備份 zip'
-      + '（備份會被丟到雲端硬碟，key 不該跟著跑）。所以還原備份之後要重貼一次。'),
+    field('API Key', keyInput),
     keyFormatNote,
     el('label', { class: 'field' }, [
       el('span', { text: '模型' }),
@@ -222,9 +214,6 @@ export default async function settings() {
 
   addAiCard(el('div', { class: 'card' }, [
     el('h2', { text: '逐字稿預設來源' }),
-    el('p', { class: 'muted', style: 'margin:-4px 0 10px' },
-      '這只是預設值，每一筆記錄都還是可以當場改。錄音檔本身永遠留在裝置上，'
-      + '只有你選 Gemini 轉檔時才會上傳那一段音訊。'),
     el('div', { class: 'chips' }, srcBtns),
   ]));
 
@@ -234,9 +223,6 @@ export default async function settings() {
   allowImgBox.checked = !!allowImg;
   addAiCard(el('div', { class: 'card' }, [
     el('h2', { text: '圖片' }),
-    el('div', { class: 'notice info' },
-      '照片預設永遠不會上傳。打開下面這個開關之後，你才能在單一張照片上手動點「問 AI」，'
-      + '而且每次送出前都會再問你一次。'),
     el('label', { class: 'row', style: 'gap:10px;cursor:pointer' }, [
       allowImgBox,
       el('span', { text: '允許我手動選單張照片送 AI' }),
@@ -284,9 +270,6 @@ export default async function settings() {
 
   addAiCard(el('div', { class: 'card' }, [
     el('h2', { text: '代號對照表' }),
-    el('p', { class: 'muted', style: 'margin:-4px 0 10px' },
-      '送 AI 之前，左邊的字會自動換成右邊的代號。'
-      + '這張表本身永遠不會上傳，顯示的時候會換回真名。'),
     aliasList,
     el('div', { class: 'row wrap', style: 'gap:8px' }, [addAlias, fillFromProjects]),
   ]));
@@ -294,15 +277,12 @@ export default async function settings() {
   // ---------- 敏感詞 ----------
   const extraSensitive = await getExtraSensitive();
   const sensInput = el('textarea', {
-    placeholder: '一行一個。例：\n王主任\n○○營造\n標案編號',
+    placeholder: '一行一個',
     style: 'min-height:90px',
   });
   sensInput.value = extraSensitive.join('\n');
   addAiCard(el('div', { class: 'card' }, [
     el('h2', { text: '敏感詞警示' }),
-    el('p', { class: 'muted', style: 'margin:-4px 0 10px' },
-      '送出前會掃描要傳出去的文字，命中就標紅提醒你。專案名稱、機關、承商會自動納入，'
-      + '這裡只需要補其他的。'),
     sensInput,
   ]));
 
@@ -345,19 +325,10 @@ export default async function settings() {
   wrap.append(el('div', { class: 'card', style: 'margin-top:16px' }, [
     el('h2', { text: '備份與匯出' }),
     statusLine,
-    el('p', { class: 'muted', style: 'margin:0 0 10px' },
-      '匯出後用 iOS 的分享選單存到「檔案」或 iCloud。'
-      + '瀏覽器的儲存空間有可能被系統清掉，照片與錄音只在這台裝置上，重做不回來。'),
     backupBtn,
     est ? el('p', { class: 'muted', style: 'margin-top:10px' },
       `已用 ${fmtBytes(est.usage)}　可用約 ${fmtBytes(est.quota)}`) : null,
     await persistenceNotice(),
-    el('div', { class: 'notice warn', style: 'margin-top:10px' }, [
-      el('strong', { text: '會讓所有資料消失的三件事' }),
-      '① 把主畫面的 App 圖示刪掉重裝　② 在 Safari 設定裡清除網站資料　'
-      + '③ 按下面的「清空所有資料」。'
-      + '這三件事會連專案、照片、錄音、API key 一起清掉，只有匯出的備份救得回來。',
-    ]),
   ]));
 
   const wipe = el('button', {
@@ -389,14 +360,12 @@ export default async function settings() {
 async function persistenceNotice() {
   const p = await isPersisted();
   if (p === true) {
-    return el('p', { class: 'muted', style: 'margin-top:6px' },
-      '儲存狀態：持久化已生效，系統不會因為清空間而自動刪掉這些資料。');
+    return el('p', { class: 'muted', style: 'margin-top:6px' }, '儲存狀態：持久化已生效');
   }
   if (p === false) {
     return el('div', { class: 'notice warn', style: 'margin-top:10px' }, [
       el('strong', { text: '儲存狀態：未取得持久化' }),
-      '瀏覽器沒有答應幫你長期保留，空間不足或長期沒開啟時資料可能被清掉。'
-      + '把這個網站「加到主畫面」通常就會拿到，並請更勤快地匯出備份。',
+      '資料可能被系統清掉。加到主畫面通常就會拿到。',
     ]);
   }
   return null; // 這個瀏覽器沒有這個 API，不要亂講
@@ -410,11 +379,8 @@ function maskKey(k) {
 
 function tierNoticeContent(tier) {
   if (tier === 'paid') {
-    return [el('div', { class: 'notice info' },
-      '付費層：Google 不會拿你送出的內容去訓練模型。')];
+    return [el('div', { class: 'notice info' }, '付費層：Google 不會拿內容去訓練模型。')];
   }
-  return [el('div', { class: 'notice warn' }, [
-    el('strong', { text: '免費層：內容可能被用於改善 Google 的產品，也可能被人工審閱。' }),
-    '拿公開資料練習沒問題。正式工作內容請先綁信用卡切到付費層，並確認公司的規定。',
-  ])];
+  return [el('div', { class: 'notice warn' },
+    '免費層：內容可能被 Google 用於改善產品，也可能被人工審閱。')];
 }

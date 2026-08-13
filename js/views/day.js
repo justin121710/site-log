@@ -38,7 +38,6 @@ export default async function day({ projectId, date }) {
 
   const dayCard = el('details', { class: 'card' }, [
     el('summary', { style: 'font-weight:700;cursor:pointer;list-style:revert' }, '當日工地資訊'),
-    el('p', { class: 'muted', style: 'margin:8px 0 12px' }, '一天填一次就好，會帶進日報。'),
     el('div', { class: 'grid2' }, [
       mk('weatherAM', '天氣（上午）', { placeholder: '晴／陰／雨' }),
       mk('weatherPM', '天氣（下午）', { placeholder: '晴／陰／雨' }),
@@ -64,7 +63,6 @@ export default async function day({ projectId, date }) {
   if (!entries.length) {
     wrap.append(el('div', { class: 'empty' }, [
       el('strong', { text: '這天還沒有記錄' }),
-      el('p', { class: 'muted' }, '拍張照、按錄音講兩句，或直接打字都可以。'),
     ]));
     return wrap;
   }

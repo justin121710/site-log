@@ -152,8 +152,7 @@ export default async function reports({ projectId }) {
 
   wrap.append(el('div', { class: 'card' }, [
     el('h2', { text: '專案完整本' }),
-    el('p', { class: 'muted', style: 'margin:-4px 0 10px' },
-      `全部 ${allEntries.length} 筆。照片多的話檔案會很大，附照片前先想一下。`),
+    el('p', { class: 'muted', style: 'margin:-4px 0 10px' }, `全部 ${allEntries.length} 筆`),
     bookBtn,
   ]));
 

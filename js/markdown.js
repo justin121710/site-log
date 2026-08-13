@@ -50,7 +50,7 @@ export function entryToMarkdown(entry, imagePaths = []) {
   if (entry.ai) {
     L.push(entry.verified
       ? `*已確認${entry.verifiedNote ? `（依據：${entry.verifiedNote}）` : ''}*`
-      : '*未查證 — 這段是 AI 整理的，還沒查過規範或問過前輩*');
+      : '*未查證*');
     L.push('');
   }
 
