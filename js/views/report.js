@@ -3,7 +3,7 @@
 // 表頭欄位從專案與當日工地資訊自動帶入，內文由 AI 從當天的記錄整理。
 // 格式集中在 report-template.js，將來要換成公司的制式表格只要改那個檔。
 
-import { el, setTitle, fmtDate, toast, confirmDialog, flushActiveInput } from '../ui.js';
+import { el, append, setTitle, fmtDate, toast, confirmDialog, flushActiveInput } from '../ui.js';
 import { get, listEntries, getOrCreateDay, getReport, saveReport, reportId, getSetting } from '../db.js';
 import { REPORT_SECTIONS, makeReport } from '../gemini.js';
 import { confirmUpload } from '../confirm-upload.js';
@@ -202,7 +202,7 @@ export default async function report({ projectId, date }) {
     }
   });
 
-  wrap.append(
+  append(wrap,
     statusNotice,
     aiEnabled ? genBtn : null,
     aiEnabled ? el('div', { style: 'height:8px' }) : null,

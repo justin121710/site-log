@@ -38,6 +38,22 @@ export function el(tag, attrs = {}, children = []) {
   return node;
 }
 
+/**
+ * 像 node.append()，但會跳過 null／undefined／false。
+ *
+ * 原生的 Node.append() 會把 null 轉成「字串 "null"」直接印在畫面上——
+ * `wrap.append(a, cond ? b : null)` 這種很自然的寫法就會漏出來。
+ * el() 的 children 早就有處理，但直接呼叫 .append() 的地方沒有，
+ * 所以統一走這個。
+ */
+export function append(parent, ...children) {
+  for (const c of children.flat(Infinity)) {
+    if (c === null || c === undefined || c === false) continue;
+    parent.append(c instanceof Node ? c : document.createTextNode(displayText(c)));
+  }
+  return parent;
+}
+
 let toastTimer = null;
 export function toast(msg, ms = 2600) {
   const node = document.getElementById('toast');
