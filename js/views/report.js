@@ -10,7 +10,7 @@ import { confirmUpload } from '../confirm-upload.js';
 import { buildMaterial, renderReportText, buildLocalDraft } from '../report-template.js';
 import { icon } from '../icons.js';
 import { buildDailyReportHtml, buildPhotoSheetHtml } from '../report-html.js';
-import { shareTextFile } from '../export.js';
+import { presentReport } from '../export-ui.js';
 import { revertAliases, getAliases } from '../redact.js';
 
 export default async function report({ projectId, date }) {
@@ -201,8 +201,7 @@ export default async function report({ projectId, date }) {
           perPage: opened.perPage,
           withPhotos: opened.kind === 'full',
         });
-      await shareTextFile(out.html, out.filename);
-      toast(out.photos ? `已產生，含 ${out.photos} 張照片` : '已產生', 4000);
+      presentReport(out);
     } catch (err) {
       toast(`產生失敗：${err.message}`, 5000);
     } finally {

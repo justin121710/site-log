@@ -121,7 +121,8 @@ function shell(title, bodyHtml) {
 <style>${CSS}</style>
 </head><body>
 <div class="noprint">
-  要存成 PDF：在 Safari 開啟本檔 → 分享 → 列印 → 用兩指在預覽圖上外推 → 分享 → 儲存到檔案。
+  <b>要存成 PDF：</b>用瀏覽器的分享鍵（□↑）→ 列印 → 兩指在預覽圖上外推 → 分享 → 儲存到檔案。
+  這一段字不會被印出去。
   <button onclick="window.print()">直接列印</button>
 </div>
 ${bodyHtml}
