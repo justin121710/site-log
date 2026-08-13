@@ -19,6 +19,8 @@ const ASSETS = [
   'js/db.js',
   'js/taxonomy.js',
   'js/icons.js',
+  'js/twzones.js',
+  'js/exif.js',
   'js/glossary.js',
   'js/gemini.js',
   'js/redact.js',

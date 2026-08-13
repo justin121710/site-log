@@ -7,6 +7,7 @@
 
 import { fmtDate, fmtTime } from './ui.js';
 import { categoryName } from './taxonomy.js';
+import { formatSite } from './twzones.js';
 
 /**
  * 單筆記錄。
@@ -68,6 +69,8 @@ export function renderDocument({ title, project, day, entries, imagePathsFor = (
 
   if (project) {
     const head = [];
+    const site = formatSite(project.site);
+    if (site) head.push(`工址：${site}`);
     if (project.contractNo) head.push(`契約編號：${project.contractNo}`);
     if (project.agency) head.push(`主辦機關：${project.agency}`);
     if (project.contractor) head.push(`承商：${project.contractor}`);

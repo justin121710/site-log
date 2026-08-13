@@ -131,6 +131,8 @@ export function newProject(fields = {}) {
     plannedProgress: '',
     actualProgress: '',
     supervisorUnit: '',
+    // 工址。工地不會移動，所以行政區屬於專案，不該每張照片重存一次。
+    site: { county: '', district: '', village: '', address: '' },
     archived: false,
     createdAt: now,
     updatedAt: now,

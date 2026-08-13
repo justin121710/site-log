@@ -4,8 +4,13 @@
 // 浮水印只在顯示與匯出照片時才疊上去。燒進去就回不來了。
 
 import { fmtDate } from './ui.js';
+import { formatSite } from './twzones.js';
 
-/** 組出要疊在照片上的兩行字。 */
+/**
+ * 組出要疊在照片上的字。
+ * 行政區寫在照片上比經緯度有用得多——驗收時看的人要的是「這是哪裡」，
+ * 不是一組他還要去查的座標。
+ */
 export function watermarkLines(entry, project) {
   const d = new Date(entry.capturedAt || Date.now());
   const p = (n) => String(n).padStart(2, '0');
@@ -13,8 +18,9 @@ export function watermarkLines(entry, project) {
 
   const place = [entry.floor, entry.gridline, entry.area].filter(Boolean).join(' · ');
   const line2 = [project?.name || '', place].filter(Boolean).join('　');
+  const line3 = formatSite(project?.site);
 
-  return [stamp, line2].filter(Boolean);
+  return [stamp, line2, line3].filter(Boolean);
 }
 
 /**

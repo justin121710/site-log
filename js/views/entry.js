@@ -17,6 +17,8 @@ import {
 } from '../media.js';
 import { confirmUpload, confirmAudioUpload } from '../confirm-upload.js';
 import { icon } from '../icons.js';
+import { readGpsFromJpeg } from '../exif.js';
+import { formatSite } from '../twzones.js';
 import { tidyAndExtract, transcribe, describeImage } from '../gemini.js';
 import { fixTerms } from '../glossary.js';
 import { applyWatermark } from '../watermark.js';
@@ -92,13 +94,25 @@ export default async function entryView(params) {
     const files = await pickPhotos(opts);
     if (!files.length) return;
     toast(`處理 ${files.length} 張照片…`, 1500);
+
+    let exifHit = false;
     for (const f of files) {
+      // 一定要在 normalizePhoto 之前讀——那一步會用 canvas 重編碼，EXIF 全部會被砍掉
+      if (!e.gps) {
+        const g = await readGpsFromJpeg(f);
+        if (g) { e.gps = g; exifHit = true; await saveEntry(e); }
+      }
       const { blob, width, height } = await normalizePhoto(f);
       await addMedia({ entryId: e.id, kind: 'photo', blob, mime: blob.type, width, height });
     }
-    if (!e.gps) getGPS().then((g) => { if (g) { e.gps = g; saveEntry(e); } });
+
+    // iOS 直拍不會附 GPS EXIF，所以相簿沒撈到座標時還是要問一次定位
+    if (!e.gps) {
+      getGPS().then((g) => { if (g) { e.gps = { ...g, source: 'device' }; saveEntry(e); renderGps(); } });
+    }
     await renderMedia();
-    toast('照片已存在這台裝置上');
+    renderGps();
+    toast(exifHit ? '照片已存好，並從照片本身讀到拍攝座標' : '照片已存在這台裝置上');
   }
 
   wrap.append(el('div', { class: 'card' }, [
@@ -388,16 +402,46 @@ export default async function entryView(params) {
     projectSel,
   ]));
 
+  // 座標本身對人沒有意義，所以主要顯示專案工址，座標降級成一個可以點開地圖的連結
+  const gpsBox = el('div', {});
+  function renderGps() {
+    gpsBox.replaceChildren();
+    const siteText = formatSite(project?.site);
+    if (siteText) {
+      gpsBox.append(el('p', { class: 'muted', style: 'margin:0 0 4px' }, `工址：${siteText}`));
+    } else if (project) {
+      gpsBox.append(el('p', { class: 'muted', style: 'margin:0 0 4px' }, [
+        '這個專案還沒填工址　',
+        el('a', { href: `#/p/${project.id}/edit`, style: 'color:var(--accent)' }, '去填'),
+      ]));
+    }
+    if (e.gps) {
+      gpsBox.append(el('div', { class: 'row', style: 'gap:8px' }, [
+        el('a', {
+          href: `https://www.google.com/maps?q=${e.gps.lat},${e.gps.lng}`,
+          target: '_blank',
+          rel: 'noopener',
+          class: 'btn ghost sm',
+          text: '在地圖上看這個點',
+        }),
+        el('span', { class: 'muted', style: 'font-size:12px' },
+          e.gps.source === 'exif' ? '來自照片' : '來自手機定位'),
+      ]));
+    } else {
+      gpsBox.append(el('p', { class: 'muted', style: 'margin:0' },
+        '沒有座標。iOS 用相機直拍不會附座標，手機定位在橋下或涵洞裡也常抓不到——不影響記錄。'));
+    }
+  }
+  renderGps();
+
   wrap.append(el('div', { class: 'card' }, [
     el('h2', { text: '位置' }),
     el('div', { class: 'grid2' }, [
-      mkField('floor', '樓層', 'B2F'),
-      mkField('gridline', '軸線／編號', 'X3-Y5'),
+      mkField('floor', '樁號／樓層', 'K12+350'),
+      mkField('gridline', '墩號／編號', 'P3'),
     ]),
-    mkField('area', '區域／部位', '東側偽柱'),
-    e.gps
-      ? el('p', { class: 'muted mono' }, `GPS ${e.gps.lat}, ${e.gps.lng}（±${e.gps.acc}m）`)
-      : el('p', { class: 'muted' }, 'GPS 沒抓到（地下室很正常）'),
+    mkField('area', '部位／左右岸', '左岸護岸'),
+    gpsBox,
   ]));
 
   wrap.append(el('div', { class: 'card' }, [

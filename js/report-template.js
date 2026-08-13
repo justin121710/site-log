@@ -7,6 +7,7 @@
 import { fmtDate, fmtTime } from './ui.js';
 import { categoryName } from './taxonomy.js';
 import { REPORT_SECTIONS } from './gemini.js';
+import { formatSite } from './twzones.js';
 
 /**
  * 把當天的記錄組成要送給 AI 的素材。只有文字，照片絕對不會進來。
@@ -143,6 +144,8 @@ export function renderReportText({ project, day, date, sections, freeSummary }) 
   L.push('公共工程監造日報表');
   L.push('');
   L.push(`工程名稱：${project.name || ''}`);
+  const site = formatSite(project.site);
+  if (site) L.push(`工　　址：${site}`);
   if (project.contractNo) L.push(`契約編號：${project.contractNo}`);
   if (project.agency) L.push(`主辦機關：${project.agency}`);
   if (project.supervisorUnit) L.push(`監造單位：${project.supervisorUnit}`);
