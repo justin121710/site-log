@@ -32,6 +32,7 @@ const ASSETS = [
   'js/markdown.js',
   'js/confirm-upload.js',
   'js/report-template.js',
+  'js/report-html.js',
   'js/views/projects.js',
   'js/views/project.js',
   'js/views/project-edit.js',

@@ -9,6 +9,8 @@ import { REPORT_SECTIONS, makeReport } from '../gemini.js';
 import { confirmUpload } from '../confirm-upload.js';
 import { buildMaterial, renderReportText, buildLocalDraft } from '../report-template.js';
 import { icon } from '../icons.js';
+import { buildDailyReportHtml, buildPhotoSheetHtml } from '../report-html.js';
+import { shareTextFile } from '../export.js';
 import { revertAliases, getAliases } from '../redact.js';
 
 export default async function report({ projectId, date }) {
@@ -177,6 +179,38 @@ export default async function report({ projectId, date }) {
   const saveBtn = el('button', { class: 'btn ghost', type: 'button', text: '儲存' });
   saveBtn.addEventListener('click', async () => { flushActiveInput(); await persist(false); });
 
+  // ---------- 匯出成可列印的 HTML ----------
+  const currentSections = () =>
+    Object.fromEntries(REPORT_SECTIONS.map((s) => [s.key, boxes[s.key].value]));
+
+  const htmlBtn = el('button', { class: 'btn', type: 'button', text: '匯出報表（可印成 PDF）' });
+  htmlBtn.addEventListener('click', async () => {
+    flushActiveInput();
+    await persist(true);
+    const opened = await exportChoiceDialog();
+    if (!opened) return;
+    htmlBtn.disabled = true;
+    htmlBtn.textContent = '產生中…';
+    try {
+      const out = opened.kind === 'photos'
+        ? await buildPhotoSheetHtml({ project, date, entries, perPage: opened.perPage })
+        : await buildDailyReportHtml({
+          project, day, date, entries,
+          sections: currentSections(),
+          freeSummary: freeBox.value,
+          perPage: opened.perPage,
+          withPhotos: opened.kind === 'full',
+        });
+      await shareTextFile(out.html, out.filename);
+      toast(out.photos ? `已產生，含 ${out.photos} 張照片` : '已產生', 4000);
+    } catch (err) {
+      toast(`產生失敗：${err.message}`, 5000);
+    } finally {
+      htmlBtn.disabled = false;
+      htmlBtn.textContent = '匯出報表（可印成 PDF）';
+    }
+  });
+
   wrap.append(
     statusNotice,
     aiEnabled ? genBtn : null,
@@ -188,10 +222,64 @@ export default async function report({ projectId, date }) {
       verifyBox,
       el('span', { text: '我已經逐段核對過這份日報' }),
     ]),
-    el('div', { class: 'row wrap', style: 'gap:8px' }, [saveBtn, copyBtn]),
+    htmlBtn,
+    el('div', { class: 'row wrap', style: 'gap:8px;margin-top:10px' }, [saveBtn, copyBtn]),
   );
 
   return wrap;
+}
+
+/** @returns {Promise<{kind:'full'|'textonly'|'photos', perPage:2|4}|null>} */
+function exportChoiceDialog() {
+  const dlg = el('dialog');
+  let kind = 'full';
+  let perPage = 2;
+
+  const mkGroup = (options, get, set) => {
+    const wrap = el('div', { class: 'chips' });
+    const btns = options.map(([v, label]) => {
+      const b = el('button', { class: 'chip sm', type: 'button', 'aria-pressed': String(get() === v), text: label });
+      b.addEventListener('click', () => {
+        set(v);
+        for (const x of btns) x.setAttribute('aria-pressed', String(x === b));
+      });
+      return b;
+    });
+    wrap.append(...btns);
+    return wrap;
+  };
+
+  const cancel = el('button', { class: 'btn ghost', type: 'button', text: '取消' });
+  const ok = el('button', { class: 'btn', type: 'button', text: '產生' });
+
+  dlg.append(el('div', {}, [
+    el('h2', { text: '要產生什麼' }),
+    mkGroup([
+      ['full', '日報 + 施工照片表'],
+      ['textonly', '只要日報本文'],
+      ['photos', '只要施工照片表'],
+    ], () => kind, (v) => { kind = v; }),
+
+    el('div', { class: 'muted', style: 'margin:14px 0 6px;font-size:13px' }, '照片表一頁幾張'),
+    mkGroup([[2, '2 張（大，看得出細節）'], [4, '4 張（省紙）']], () => perPage, (v) => { perPage = v; }),
+
+    el('div', { class: 'notice info', style: 'margin-top:14px' },
+      '產生的是一個 .html 檔，照片直接嵌在裡面，單一個檔就是完整報表。'
+      + '存到「檔案」後用 Safari 開啟 → 分享 → 列印 → 兩指外推預覽圖 → 分享 → 儲存到檔案，就是 PDF。'),
+
+    el('menu', {}, [cancel, ok]),
+  ]));
+
+  document.body.append(dlg);
+  dlg.showModal();
+
+  return new Promise((resolve) => {
+    let result = null;
+    cancel.addEventListener('click', () => dlg.close());
+    ok.addEventListener('click', () => { result = { kind, perPage }; dlg.close(); });
+    dlg.addEventListener('cancel', (ev) => { ev.preventDefault(); dlg.close(); });
+    dlg.addEventListener('close', () => { dlg.remove(); resolve(result); }, { once: true });
+  });
 }
 
 function showTextDialog(text) {

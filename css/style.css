@@ -390,6 +390,19 @@ input:focus, select:focus, textarea:focus {
   border: 1px solid var(--line);
 }
 .thumb img { width: 100%; height: 100%; object-fit: cover; display: block; }
+/* 標籤直接壓在縮圖上，才不用點進去才知道哪幾張標過 */
+.thumb-tag {
+  position: absolute;
+  left: 3px;
+  bottom: 3px;
+  padding: 2px 6px;
+  border-radius: 6px;
+  background: rgba(0, 0, 0, .68);
+  color: #fff;
+  font-size: 10px;
+  font-weight: 700;
+}
+
 .thumb button.rm {
   position: absolute; top: 3px; right: 3px;
   display: flex; align-items: center; justify-content: center;

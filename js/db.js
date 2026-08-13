@@ -201,6 +201,10 @@ export function newEntry(projectId, date) {
     ai: null, // { fields, suggestedCategories, tidied, model, at }
     verified: false, // 你勾「已確認」才會變 true
     verifiedNote: '', // 依據：規範章節 / 誰說的
+    // 缺失追蹤：改正往往是幾天後的另一筆記錄，沒有單號就串不起來，
+    // 追蹤表會退化成「所有缺失按日期排」的清單。
+    defectNo: '',
+    defectStatus: '', // 開立 | 改正中 | 已複驗
     gps: null, // { lat, lng, acc }
     createdAt: now,
     updatedAt: now,
@@ -224,6 +228,45 @@ export async function saveEntry(entry) {
   return put('entries', entry);
 }
 
+export const DEFECT_STATUSES = ['開立', '改正中', '已複驗'];
+
+/**
+ * 這個專案的下一個缺失單號。只認得 D-001 這種格式，
+ * 你改成公司自己的編號規則之後就不會再被自動編號干擾。
+ */
+export async function nextDefectNo(projectId) {
+  const rows = await listEntries(projectId);
+  let max = 0;
+  for (const e of rows) {
+    const m = /^D-(\d+)$/.exec((e.defectNo || '').trim());
+    if (m) max = Math.max(max, Number(m[1]));
+  }
+  return `D-${String(max + 1).padStart(3, '0')}`;
+}
+
+/** 把同一個單號的記錄歸成一組，時間由早到晚。 */
+export async function groupDefects(projectId) {
+  const rows = (await listEntries(projectId)).filter((e) => (e.defectNo || '').trim());
+  const groups = new Map();
+  for (const e of rows) {
+    const no = e.defectNo.trim();
+    if (!groups.has(no)) groups.set(no, []);
+    groups.get(no).push(e);
+  }
+  for (const list of groups.values()) {
+    list.sort((a, b) => (a.capturedAt || '').localeCompare(b.capturedAt || ''));
+  }
+  return [...groups.entries()]
+    .sort((a, b) => a[0].localeCompare(b[0], 'en', { numeric: true }))
+    .map(([no, entries]) => ({
+      no,
+      entries,
+      // 狀態以最後一筆有填的為準——改正是後來才發生的事
+      status: [...entries].reverse().find((e) => e.defectStatus)?.defectStatus || '開立',
+      openedAt: entries[0].date,
+    }));
+}
+
 export async function deleteEntry(entryId) {
   for (const m of await listMedia(entryId)) await del('media', m.id);
   await del('entries', entryId);
@@ -242,6 +285,10 @@ export async function addMedia({ entryId, kind, blob, mime, width, height, durat
     height: height ?? null,
     duration: duration ?? null,
     size: blob.size,
+    // 施工照片表需要「每一張」各自的說明。改正前與改正後常常在同一筆記錄裡，
+    // 共用一段文字的話兩張的圖說會一模一樣。
+    tag: '', // 改正前 / 改正後 / 全景 …
+    caption: '', // 留空時報表自動用記錄的文字
     createdAt: new Date().toISOString(),
   };
   await put('media', row);
@@ -256,6 +303,16 @@ export async function listMedia(entryId) {
 export async function deleteMedia(mediaId) {
   return del('media', mediaId);
 }
+
+/** 只更新照片的標籤與說明，不動 blob。 */
+export async function updateMedia(mediaId, fields) {
+  const row = await get('media', mediaId);
+  if (!row) return null;
+  return put('media', { ...row, ...fields });
+}
+
+/** 施工照片表用的標籤。順序就是它們在工地被拍到的順序。 */
+export const PHOTO_TAGS = ['全景', '近照', '量測', '材料', '改正前', '改正後'];
 
 // ---------- reports ----------
 

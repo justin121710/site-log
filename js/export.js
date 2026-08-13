@@ -189,6 +189,15 @@ async function scopeLabel({ projectId, date } = {}) {
   return '全部';
 }
 
+/**
+ * 把一份 HTML／文字檔送出去。走分享選單而不是 window.print()，
+ * 因為「加到主畫面」的 PWA 是 standalone 模式，沒有 Safari 的分享列，
+ * 不保證叫得出列印介面。存成檔案再用 Safari 開，這條一定會通。
+ */
+export async function shareTextFile(text, filename, mime = 'text/html;charset=utf-8') {
+  await share(new Blob([text], { type: mime }), filename);
+}
+
 /** iOS 上優先走分享選單，使用者才能直接選「儲存到檔案」或雲端硬碟。 */
 async function share(blob, filename) {
   const file = new File([blob], filename, { type: blob.type });

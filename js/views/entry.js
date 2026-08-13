@@ -8,7 +8,8 @@ import {
 } from '../ui.js';
 import {
   get, getSetting, newEntry, saveEntry, deleteEntry, addMedia, listMedia,
-  deleteMedia, setSetting, listProjects,
+  deleteMedia, setSetting, listProjects, updateMedia, PHOTO_TAGS,
+  DEFECT_STATUSES, nextDefectNo,
 } from '../db.js';
 import { CATEGORIES, categoryName, seedSubtags } from '../taxonomy.js';
 import {
@@ -75,7 +76,15 @@ export default async function entryView(params) {
           },
         }, [icon('close', { size: 16 })]),
       ]);
-      box.addEventListener('click', () => openPhoto(m, e, project, allowImageUpload));
+      box.addEventListener('click', () => openPhoto(m, e, project, allowImageUpload, renderMedia));
+
+      // 標籤直接標在縮圖上，不用點進去才看得到——不然你不會知道哪幾張標過了
+      if (m.tag) {
+        box.append(el('span', {
+          class: 'thumb-tag',
+          text: m.tag,
+        }));
+      }
       thumbs.append(box);
     }
 
@@ -327,6 +336,7 @@ export default async function entryView(params) {
         else e.categoryIds.push(c.id);
         saveEntry(e);
         renderCats();
+        syncDefectCard();
       });
       catChips.append(b);
     }
@@ -451,6 +461,58 @@ export default async function entryView(params) {
     subChips,
   ]));
 
+  // ---------- 缺失追蹤 ----------
+  // 只在勾了「品質異常與缺失改正」或已經有單號時才出現，
+  // 不要讓每一筆記錄都被一個用不到的欄位佔版面。
+  const defectCard = el('div', { class: 'card' });
+  const defectNoInput = input({ value: e.defectNo || '', placeholder: 'D-001' });
+  defectNoInput.addEventListener('input', () => { e.defectNo = defectNoInput.value.trim(); autosave(); });
+
+  const autoNoBtn = el('button', { class: 'btn ghost sm', type: 'button', text: '自動編號' });
+  autoNoBtn.addEventListener('click', async () => {
+    if (!e.projectId) { toast('未歸專案的記錄沒辦法自動編號'); return; }
+    const no = await nextDefectNo(e.projectId);
+    defectNoInput.value = no;
+    e.defectNo = no;
+    await saveEntry(e);
+    toast(`已編為 ${no}`);
+  });
+
+  let curStatus = e.defectStatus || '';
+  const statusBtns = DEFECT_STATUSES.map((s) => {
+    const b = el('button', { class: 'chip sm', type: 'button', 'aria-pressed': String(s === curStatus), text: s });
+    b.addEventListener('click', () => {
+      curStatus = curStatus === s ? '' : s;
+      for (const x of statusBtns) x.setAttribute('aria-pressed', String(x.textContent === curStatus));
+      e.defectStatus = curStatus;
+      saveEntry(e);
+    });
+    return b;
+  });
+
+  defectCard.append(
+    el('h2', { text: '缺失追蹤' }),
+    el('p', { class: 'muted', style: 'margin:-4px 0 10px' },
+      '改正通常是幾天後的另一筆記錄。填同一個單號，追蹤表才串得起來。'),
+    el('div', { class: 'row', style: 'gap:8px;align-items:flex-end' }, [
+      el('label', { class: 'field', style: 'flex:1;margin:0' }, [
+        el('span', { text: '缺失單號' }),
+        defectNoInput,
+      ]),
+      autoNoBtn,
+    ]),
+    el('div', { style: 'margin-top:12px' }, [
+      el('div', { class: 'muted', style: 'margin-bottom:6px;font-size:13px' }, '狀態'),
+      el('div', { class: 'chips' }, statusBtns),
+    ]),
+  );
+
+  function syncDefectCard() {
+    defectCard.hidden = !(e.categoryIds.includes('defect') || (e.defectNo || '').trim());
+  }
+  syncDefectCard();
+  wrap.append(defectCard);
+
   // ---------- 備註 ----------
   const noteBox = el('textarea', { placeholder: '自己補充的文字（不會送給 AI，除非你在上面按整理）', style: 'min-height:90px' });
   noteBox.value = e.note || '';
@@ -547,10 +609,36 @@ function audioRow(m, e, autosave, transcriptBox, refresh, aiEnabled = true) {
 
 // ---------- 放大看照片 ----------
 
-async function openPhoto(m, entry, project, allowImageUpload) {
+async function openPhoto(m, entry, project, allowImageUpload, onChange) {
   const dlg = el('dialog');
   const url = URL.createObjectURL(m.blob);
   const img = el('img', { src: url, style: 'width:100%;border-radius:10px;display:block' });
+
+  // ---------- 施工照片表用的標籤與圖說 ----------
+  let curTag = m.tag || '';
+  const tagChips = el('div', { class: 'chips', style: 'margin-top:10px' });
+  const tagBtns = PHOTO_TAGS.map((t) => {
+    const b = el('button', { class: 'chip sm', type: 'button', 'aria-pressed': String(t === curTag), text: t });
+    b.addEventListener('click', async () => {
+      curTag = curTag === t ? '' : t; // 再點一次取消
+      for (const x of tagBtns) x.setAttribute('aria-pressed', String(x.textContent === curTag));
+      await updateMedia(m.id, { tag: curTag });
+      m.tag = curTag;
+      onChange?.();
+    });
+    return b;
+  });
+  tagChips.append(...tagBtns);
+
+  const capInput = el('input', {
+    type: 'text',
+    value: m.caption || '',
+    placeholder: '圖說（留空就用這筆記錄的文字）',
+  });
+  capInput.addEventListener('input', debounce(async () => {
+    await updateMedia(m.id, { caption: capInput.value });
+    m.caption = capInput.value;
+  }, 500));
 
   const wmBtn = el('button', { class: 'btn ghost sm', type: 'button', text: '疊上浮水印預覽' });
   let watermarked = null;
@@ -617,8 +705,14 @@ async function openPhoto(m, entry, project, allowImageUpload) {
   close.addEventListener('click', () => dlg.close());
   actions.append(close);
 
-  dlg.append(img, actions);
+  dlg.append(
+    img,
+    el('div', { class: 'muted', style: 'margin-top:12px;font-size:13px' }, '這張照片在報表上的標籤'),
+    tagChips,
+    el('div', { style: 'margin-top:10px' }, [capInput]),
+    actions,
+  );
   document.body.append(dlg);
   dlg.showModal();
-  dlg.addEventListener('close', () => { URL.revokeObjectURL(url); dlg.remove(); }, { once: true });
+  dlg.addEventListener('close', () => { URL.revokeObjectURL(url); dlg.remove(); onChange?.(); }, { once: true });
 }
