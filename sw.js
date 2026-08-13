@@ -39,6 +39,7 @@ const ASSETS = [
   'js/views/day.js',
   'js/views/entry.js',
   'js/views/report.js',
+  'js/views/reports.js',
   'js/views/library.js',
   'js/views/category.js',
   'js/views/settings.js',

@@ -19,6 +19,7 @@ const ROUTES = [
   ['/p/:projectId/day/:date', () => import('./views/day.js')],
   ['/p/:projectId/new', () => import('./views/entry.js')],
   ['/p/:projectId/report/:date', () => import('./views/report.js')],
+  ['/p/:projectId/reports', () => import('./views/reports.js')],
   ['/e/:entryId', () => import('./views/entry.js')],
 ];
 

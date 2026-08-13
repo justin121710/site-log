@@ -30,6 +30,7 @@ export default async function project({ projectId }) {
   wrap.append(el('div', { class: 'row wrap', style: 'gap:8px;margin-bottom:14px' }, [
     el('a', { href: `#/p/${p.id}/day/${t}`, class: 'btn ghost sm', text: '今天的記錄' }),
     el('a', { href: `#/p/${p.id}/report/${t}`, class: 'btn ghost sm', text: '今日日報' }),
+    el('a', { href: `#/p/${p.id}/reports`, class: 'btn ghost sm', text: '報表' }),
     el('a', { href: `#/p/${p.id}/edit`, class: 'btn ghost sm', text: '專案設定' }),
     exportBtn,
   ]));
