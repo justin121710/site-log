@@ -98,7 +98,7 @@ export default async function reports({ projectId }) {
   wrap.append(el('div', { class: 'card' }, [
     el('h2', { text: '期間報表（週報／月報）' }),
     el('div', { class: 'chips', style: 'margin-bottom:12px' }, quick),
-    el('div', { class: 'grid2' }, [field('起', fromInput), field('迄', toInput)]),
+    el('div', { class: 'grid2 dates' }, [field('起', fromInput), field('迄', toInput)]),
     periodBtn,
   ]));
 

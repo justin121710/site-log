@@ -85,9 +85,12 @@ export default async function projectEdit({ projectId }) {
 
   wrap.append(el('div', { class: 'card' }, [
     el('h2', { text: '工期與進度' }),
-    el('div', { class: 'grid2' }, [
+    // 日期欄位自己一組。它們在窄螢幕上會變成上下排，剩下四個照樣兩欄。
+    el('div', { class: 'grid2 dates' }, [
       mk('startDate', '開工日期', { type: 'date' }),
       mk('plannedEndDate', '預定竣工日期', { type: 'date' }),
+    ]),
+    el('div', { class: 'grid2' }, [
       mk('contractDays', '契約工期（天）', { type: 'number', inputmode: 'numeric' }),
       mk('contractAmount', '契約金額'),
       mk('plannedProgress', '預定進度（%）', { type: 'number', inputmode: 'decimal' }),

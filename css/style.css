@@ -266,6 +266,15 @@ input:focus, select:focus, textarea:focus {
 
 .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 0 10px; }
 
+/* grid 子項預設 min-width:auto，也就是「不准縮到比內容窄」。
+   欄位一旦有自己的最小寬度就會把格線撐破，兩欄疊在一起還超出卡片。 */
+.grid2 > * { min-width: 0; }
+
+/* 日期欄位特別麻煩：iOS Safari 的 input[type=date] 會依系統字級撐出一個
+   比兩欄寬的最小寬度，字級調大的人尤其明顯。放不下就上下排，
+   擠成兩欄再把日期切一半沒有比較好看。 */
+.grid2.dates { grid-template-columns: repeat(auto-fit, minmax(11rem, 1fr)); }
+
 /* ---------- 工項分類的方格 ---------- */
 
 /* 固定欄數而不是 auto-fill：在窄機身上也保證一排三個，不會突然變成兩個 */
