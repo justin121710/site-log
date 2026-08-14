@@ -9,13 +9,13 @@ import { GLOSSARY_HINT } from './glossary.js';
 
 const ENDPOINT = 'https://generativelanguage.googleapis.com/v1beta/models';
 
-export const DEFAULT_MODEL = 'gemini-3.6-flash';
+export const DEFAULT_MODEL = 'gemini-3.7-flash';
 
 // 這份清單只是「還沒連線過」時的預設值。Google 換模型的速度比這個 App 改版快得多，
 // 所以設定頁有一顆「抓取可用模型」會直接問你的 key 實際拿得到哪些，以那份為準。
 export const FALLBACK_MODELS = [
-  { id: 'gemini-3.6-flash', label: '推薦' },
-  { id: 'gemini-3.5-flash', label: '' },
+  { id: 'gemini-3.7-flash', label: '推薦' },
+  { id: 'gemini-3.6-flash', label: '同價位' },
   { id: 'gemini-3.5-flash-lite', label: '最便宜' },
 ];
 
@@ -246,7 +246,10 @@ ${NO_INVENTION}
 ${taxonomyForPrompt()}
 
 欄位說明：
-- tidied：把逐字稿整理成通順的紀錄文字。保留他講的所有事實，不要加也不要刪。
+- tidied：把逐字稿整理成條列式的紀錄。一行一件事，行首一律用「・」，用換行分隔。
+  保留他講的所有事實，不要加也不要刪；一句話裡講了兩件事就拆成兩行。
+  位置或部位講在哪一件事裡就留在那一行，不要另外開一行重複。
+  不要自己加「缺失部分」「材料部分」這種小標題，他沒說的字一個都不要出現。
 - floor：樓層，例如「B2F」「3F」「RF」。沒提到就空字串。
 - gridline：軸線或編號，例如「X3-Y5」「C12柱」。沒提到就空字串。
 - area：區域或部位描述，例如「東側」「電梯機房」。沒提到就空字串。

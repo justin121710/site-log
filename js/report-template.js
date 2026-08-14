@@ -72,40 +72,53 @@ const CONSTRUCTION_CATS = new Set([
   'steel', 'bridge', 'hydraulic', 'culvert', 'coating', 'waterproof', 'building',
 ]);
 
-/** 這些關鍵詞出現在子項或內文時，該筆同時歸進對應段落。 */
+/** 這些關鍵詞出現在某一行時，那一行歸進對應段落。 */
 const SECTION_HINTS = {
   // 施拉與灌漿是預力工程的檢驗停留點，跟一般抽查同一段
-  s2: /檢驗停留點|停留點|查驗|抽查|抽驗|複驗|放樣|軸線|圖說|施工圖|自主檢查|施拉|伸長量|灌漿|水密試驗|試水/,
+  s2: /檢驗停留點|停留點|查驗|抽查|抽測|抽驗|複驗|放樣|軸線|圖說|施工圖|自主檢查|施拉|伸長量|灌漿|水密試驗|試水/,
   s3: /材料|試驗|試體|坍度|氯離子|送審|抽樣|檢測|出廠|規格|品質|進場|膜厚|附著力|非破壞/,
   s4: /安全|衛生|護欄|防護|動火|局限空間|吊掛|防護具|安衛|臨水|交維/,
-  s5: /缺失|異常|不符合|改正|通知|指示|會勘|爭議|停工/,
+  // 「不足、脫落、鬆脫」這種寫法在工地就是在講缺失，不會每次都乖乖寫「缺失」兩個字
+  s5: /缺失|異常|不符合|不足|脫落|鬆脫|破損|滲漏|改正|待改善|通知|指示|會勘|爭議|停工/,
 };
 
-function entryLine(entry) {
-  const place = [entry.floor, entry.gridline, entry.area].filter(Boolean).join(' ');
-  const body = (entry.ai?.tidied || entry.transcript || entry.note || '').trim().replace(/\s*\n\s*/g, '　');
-  if (!body && !place) return null;
-  return `・${place ? `${place}：` : ''}${body || '（無文字說明）'}`;
+/** 一筆記錄裡「這一段是不是它的預設歸屬」——整行都沒對到關鍵詞時才用得上。 */
+function fallbackSection(entry) {
+  if (entry.categoryIds.some((c) => CONSTRUCTION_CATS.has(c))) return 's1';
+  if (entry.categoryIds.includes('material')) return 's3';
+  if (entry.categoryIds.includes('safety')) return 's4';
+  if (entry.categoryIds.includes('defect')) return 's5';
+  if (entry.categoryIds.includes('survey')) return 's2';
+  return 's1'; // 什麼都對不上的，寧可放進第一段讓他自己搬，也不要整行消失
 }
 
-/** 這筆記錄要進哪幾段。 */
-function sectionsFor(entry) {
-  const hay = [
-    ...entry.subtags,
-    entry.ai?.tidied || '',
-    entry.transcript || '',
-    entry.note || '',
-  ].join(' ');
+/** 記錄的內文拆成一行一件事。AI 整理本來就是條列式，行首的「・」在這裡吃掉。 */
+function entryLines(entry) {
+  const body = (entry.ai?.tidied || entry.transcript || entry.note || '').trim();
+  return body
+    .split('\n')
+    .map((s) => s.replace(/^[・·•*\-\s]+/, '').trim())
+    .filter(Boolean);
+}
 
+/**
+ * 這一行要進哪幾段。
+ *
+ * 逐行判斷而不是整筆判斷：一筆記錄常常同時講了施工、材料、安全、缺失，
+ * 整筆丟的話同樣的八行會在三段裡各印一次，日報就沒法看了。
+ */
+function sectionsForLine(line, entry) {
   const hit = new Set();
-  if (entry.categoryIds.some((c) => CONSTRUCTION_CATS.has(c))) hit.add('s1');
-  if (entry.categoryIds.includes('survey') || SECTION_HINTS.s2.test(hay)) hit.add('s2');
-  if (entry.categoryIds.includes('material') || SECTION_HINTS.s3.test(hay)) hit.add('s3');
-  if (entry.categoryIds.includes('safety') || SECTION_HINTS.s4.test(hay)) hit.add('s4');
-  if (entry.categoryIds.includes('defect') || SECTION_HINTS.s5.test(hay)) hit.add('s5');
+  for (const s of ['s2', 's3', 's4', 's5']) {
+    if (SECTION_HINTS[s].test(line)) hit.add(s);
+  }
 
-  // 什麼都沒對上的，寧可放進第一段讓他自己搬，也不要讓它整筆消失
-  if (!hit.size) hit.add('s1');
+  // 施工類的記錄，只要這一行不是在講材料、安全或缺失，就是當天的施工進度。
+  // 抽查（s2）與施工進度（s1）本來就會同時成立，那個重複是對的。
+  const isConstruction = entry.categoryIds.some((c) => CONSTRUCTION_CATS.has(c));
+  if (isConstruction && !hit.has('s3') && !hit.has('s4') && !hit.has('s5')) hit.add('s1');
+
+  if (!hit.size) hit.add(fallbackSection(entry));
   return hit;
 }
 
@@ -118,9 +131,19 @@ export function buildLocalDraft({ entries }) {
   const sorted = [...entries].sort((a, b) => (a.capturedAt || '').localeCompare(b.capturedAt || ''));
 
   for (const e of sorted) {
-    const line = entryLine(e);
-    if (!line) continue;
-    for (const s of sectionsFor(e)) buckets[s].push(line);
+    const place = [e.floor, e.gridline, e.area].filter(Boolean).join(' ');
+    const lines = entryLines(e);
+    if (!lines.length && place) lines.push('（無文字說明）');
+
+    // 位置在每一段只掛一次，掛在這筆記錄在那一段的第一行。
+    // 每行都重複「P3 靠河側：」讀起來像壞掉的複製貼上，完全不掛又不知道在講哪裡。
+    const headed = new Set();
+    for (const line of lines) {
+      for (const s of sectionsForLine(line, e)) {
+        buckets[s].push(`・${!headed.has(s) && place ? `${place}：` : ''}${line}`);
+        headed.add(s);
+      }
+    }
   }
 
   const out = {};

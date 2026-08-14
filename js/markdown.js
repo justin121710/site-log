@@ -33,7 +33,7 @@ export function entryToMarkdown(entry, imagePaths = []) {
   // 兩段一起輸出會讓筆記看起來像重複貼了兩次。原文不會遺失——它留在完整備份的 JSON 裡。
   const body = (entry.ai?.tidied || entry.transcript || '').trim();
   if (body) {
-    L.push(body);
+    L.push(bulletsToMarkdown(body));
     L.push('');
   }
 
@@ -57,6 +57,14 @@ export function entryToMarkdown(entry, imagePaths = []) {
   if (entry.gps) L.push(`<small>GPS ${entry.gps.lat}, ${entry.gps.lng}（±${entry.gps.acc}m）</small>`);
 
   return L.join('\n').trim();
+}
+
+/**
+ * AI 整理是「・」開頭的條列，但 Markdown 不認得「・」——Notion 會把整段黏成一行。
+ * 換成「- 」才會變成真的清單。
+ */
+function bulletsToMarkdown(text) {
+  return text.split('\n').map((line) => line.replace(/^・\s*/, '- ')).join('\n');
 }
 
 /**

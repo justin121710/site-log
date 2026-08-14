@@ -82,10 +82,11 @@ table.head th { background: #f0f0f0; white-space: nowrap; width: 22mm; font-weig
   display: inline-block; padding: .5mm 2mm; margin-right: 2mm;
   border: 1px solid #111; border-radius: 2mm; font-size: 9pt; font-weight: 700;
 }
-.pcell .cap { margin-top: 1mm; }
+.pcell .cap { margin-top: 1mm; white-space: pre-wrap; }
 
 table.list { width: 100%; border-collapse: collapse; margin-bottom: 4mm; font-size: 10pt; }
-table.list th, table.list td { border: 1px solid #666; padding: 1.4mm 2mm; text-align: left; vertical-align: top; }
+/* pre-wrap：AI 整理是條列式的，少了它換行會被 HTML 併成一整段，白條列了 */
+table.list th, table.list td { border: 1px solid #666; padding: 1.4mm 2mm; text-align: left; vertical-align: top; white-space: pre-wrap; }
 table.list th { background: #f0f0f0; font-weight: 600; }
 table.list .nw { white-space: nowrap; }
 .daymeta { font-size: 10pt; color: #444; margin: 0 0 2mm; }

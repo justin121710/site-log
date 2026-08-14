@@ -116,6 +116,10 @@ tools/icon-preview.html  icon 預覽（開發用）
   2026-08-14 之前匯出的舊備份還原時就是這樣，救不回來。
 - **還原不能碰 `geminiApiKey`**。備份裡本來就沒有 key，還原時把本機那把刪掉
   只會害使用者重貼一次。`restore.js` 兩種模式都會先接住再放回去。
+- **AI 產出一律是「・」開頭的條列**（`tidyAndExtract` 的 tidied 與日報五段都是）。
+  接收端三個地方要配合：報表表格與照片圖說要 `white-space: pre-wrap`（不然 HTML 把換行
+  併成一整段），Markdown 要把「・」換成「- 」（Notion 不認得「・」），
+  `buildLocalDraft()` 要**逐行**分派到五段——整筆丟的話同樣的八行會在三段各印一次。
 - **返回鍵不能用 `history.back()`**。存完記錄會把「回到那天」推進歷史，
   back 等於再走回剛剛在編輯的頁面。改成依網址算上一層（`ui.js` 的 `setBack()`），
   結束一個頁面時用 `location.replace()`，iOS 側滑返回才不會也掉回去。
