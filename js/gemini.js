@@ -91,6 +91,10 @@ async function call(parts, { schema = null, temperature = 0.2, modelId = null } 
       const j = await res.json();
       detail = j?.error?.message || '';
     } catch { /* 回應不是 JSON，維持空字串 */ }
+    // 先看 Google 到底說了什麼，再看 HTTP 狀態碼。反過來的話，「預付額度歸零」
+    // 會被 429 那條吃掉，變成叫人「等一下再試」——等到天荒地老也不會好。
+    const hint = keyHint(detail);
+    if (hint) throw new Error(hint);
     if (res.status === 400 && /API key/i.test(detail)) throw new Error('API key 無效，請到設定頁重貼');
     if (res.status === 401) throw new Error('這把 key 被拒絕了，請到設定頁按「測試連線」看詳細訊息');
     if (res.status === 429) throw new Error('超過用量限制（免費層額度很緊），等一下再試');
@@ -154,7 +158,7 @@ export async function testKey(key, modelId) {
 }
 
 /** 把 Google 的英文錯誤翻成「所以我到底該做什麼」。 */
-function keyHint(msg) {
+export function keyHint(msg) {
   if (/API key not valid/i.test(msg)) {
     return 'key 本身不對——可能複製時漏字或多了空白。回 Google AI Studio 重新複製一次。';
   }
@@ -169,8 +173,8 @@ function keyHint(msg) {
   if (/prepayment credits are depleted|prepay/i.test(msg)) {
     return '這個專案的預付額度歸零了。Google 的規則是餘額一到 0，'
       + '該帳單帳戶底下所有專案的 key 會同時停止運作，而且「不會」自動退回免費層。'
-      + '兩條路：到 AI Studio 的 Billing 頁加值（最低 10 美元），'
-      + '或另外開一個「沒有綁帳單」的新專案拿一把免費層的 key。'
+      + '兩條路：到 AI Studio 的 Billing 頁按 Buy credits 加值（最低 10 美元），'
+      + '或把這個專案的帳單停用，同一把 key 就退回免費層（但免費層的內容 Google 可能人工審閱）。'
       + '不想處理的話，設定最上面把 AI 關掉就好，記錄與日報都還能照常用。';
   }
   if (/RESOURCE_EXHAUSTED|quota/i.test(msg)) {
