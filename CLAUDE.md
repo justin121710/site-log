@@ -144,6 +144,16 @@ tools/icon-preview.html  icon 預覽（開發用）
 - **更新法規包之後一定要 bump `sw.js` 的 CACHE**。`data/laws.json` 走 cache-first，
   不像程式碼有 network-first 兜底，不換版號就會一直用舊的那包。
   （排程 `.github/workflows/update-data.yml` 會自動 bump，手動跑工具時要自己記得。）
+- **施工綱要規範沒有自動更新的路，三條都試過了，不要再花時間**（2026-08-15 實測）：
+  1. **App 內按鈕直接抓** → `pcic.pcc.gov.tw` 不給 CORS。內部查詢 API（POST）
+     過不了 preflight，官方開放資料端點（GET）也沒有 `Access-Control-Allow-Origin`。
+  2. **GitHub Actions 排程** → 該主機擋境外 IP，TCP connect timeout，跟路徑無關。
+  3. **政府資料開放平臺的替代來源**（dataset 26442「公共工程綱要編碼」）→
+     那份 JSON 只是一個指向 PDF 的連結，停在 2021-06-08，也不是章節清單。
+  結論：只能從台灣的網路手動跑 `node tools/make-specs.mjs` 再部署。
+  查法規頁在索引超過 180 天沒更新時會出現提醒，不會讓人默默用著三年前的資料。
+  （法規那半不受影響：鏡像在 raw.githubusercontent.com，CORS 與境外 IP 都通，
+  所以有 App 內按鈕，也有每月排程。）
 - **`pcic.pcc.gov.tw` 連不上境外 IP**。GitHub Actions 的機器在美國，實測三次重試、
   每次 30 秒逾時全部 connect timeout；同一支工具從台灣的網路跑完全正常。
   所以**法規可以每月自動更新，施工綱要規範不行**——規範改版時要從台灣手動跑

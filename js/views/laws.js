@@ -11,6 +11,22 @@ import { categoryName, seedSubtags } from '../taxonomy.js';
 /** 下拉選單裡「只看施工綱要規範」那一項的值。用不可能跟法規名稱撞名的字串。 */
 const SPEC_ONLY = '#spec';
 
+/** 規範索引多久沒更新就開始念。它變動不頻繁，所以門檻放寬到半年。 */
+const SPEC_STALE_DAYS = 180;
+
+/**
+ * 施工綱要規範沒有自動更新的路：工程會的站不給 CORS（瀏覽器打不到），
+ * 也擋境外 IP（GitHub 的排程連不上）。既然只能手動重跑工具再部署，
+ * 那至少要讓他知道「該叫人跑一次了」，而不是默默用著三年前的索引。
+ */
+function specStaleNotice(spec) {
+  if (!spec?.fetchedAt) return null;
+  const days = Math.floor((Date.now() - new Date(`${spec.fetchedAt}T00:00:00`).getTime()) / 86400000);
+  if (!Number.isFinite(days) || days < SPEC_STALE_DAYS) return null;
+  return el('div', { class: 'notice warn', style: 'margin-top:10px' },
+    `規範索引已經 ${days} 天沒更新（${spec.fetchedAt}）。章名與版次可能已經改過，請重跑 tools/make-specs.mjs。`);
+}
+
 export default async function laws() {
   setTitle('查法規');
   const wrap = el('div');
@@ -226,7 +242,8 @@ export default async function laws() {
   spec ? el('p', { class: 'muted', style: 'margin-top:4px;font-size:12px' },
     `施工綱要規範只有章碼與章名（${spec.count} 章，${spec.fetchedAt}），內文請到工程會下載。`
     + '這一份只能跟著 App 改版更新，上面那顆按鈕更新的是法規。'
-    + `出處：${spec.source}，${spec.license}。`) : null);
+    + `出處：${spec.source}，${spec.license}。`) : null,
+  specStaleNotice(spec));
 
   return wrap;
 }

@@ -7,7 +7,7 @@
 //   - 圖示與 manifest 走 cache-first，它們幾乎不變，沒必要每次都連。
 //   - Gemini 的請求完全不碰 SW，離線就是離線，不要假裝有結果。
 
-const CACHE = 'site-log-v13';
+const CACHE = 'site-log-v14';
 
 const ASSETS = [
   './',
