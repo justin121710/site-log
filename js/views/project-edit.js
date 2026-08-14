@@ -108,7 +108,7 @@ export default async function projectEdit({ projectId }) {
     if (!p.name) { toast('工程名稱是必填的'); f.name.focus(); return; }
     await saveProject(p);
     toast('已儲存');
-    location.hash = `#/p/${p.id}`;
+    location.replace(`#/p/${p.id}`); // 存完就不該再被側滑返回帶回這張表單
   });
   wrap.append(save);
 
@@ -129,7 +129,7 @@ export default async function projectEdit({ projectId }) {
       for (const e of entries) await deleteEntry(e.id);
       await del('projects', p.id);
       toast('已刪除');
-      location.hash = '#/';
+      location.replace('#/'); // 專案沒了，歷史裡不能留著它的頁面
     });
     wrap.append(rm);
   }

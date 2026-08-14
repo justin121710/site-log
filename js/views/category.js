@@ -180,7 +180,7 @@ export default async function category({ catId }) {
       if (!ok) return;
       const n = await removeCategory(catId);
       toast(n ? `已刪除，${n} 筆記錄的標記一併移除` : '已刪除');
-      location.hash = '#/lib';
+      location.replace('#/lib'); // 分類沒了，歷史裡不能留著它的頁面
     });
     wrap.append(del);
   }

@@ -1,6 +1,6 @@
 // 進入點：hash router + 全域狀態列。
 
-import { el, toast, setTitle } from './ui.js';
+import { el, toast, setTitle, setBack, currentBack } from './ui.js';
 import { getSetting, requestPersistence } from './db.js';
 import { icon } from './icons.js';
 import { initTaxonomy } from './taxonomy.js';
@@ -39,14 +39,38 @@ function match(path) {
   return null;
 }
 
+/**
+ * 這個網址的「上一層」。純粹看網址算，跟使用者是怎麼走到這裡的無關——
+ * 這正是重點：從哪來不影響返回會去哪，返回永遠不會掉進編輯或新增的頁面。
+ *
+ * 記錄頁（/e/:entryId）算不出來，要看那筆記錄屬於誰，由 entry.js 自己覆寫。
+ */
+function parentOf(path, query) {
+  const s = path.split('/').filter(Boolean);
+
+  if (s[0] === 'lib') return '#/lib'; // /lib/:catId
+  if (s[0] !== 'p') return '#/';
+
+  const pid = s[1];
+  if (pid === 'new' || s.length === 2) return '#/'; // 還沒建立的專案／專案首頁
+  if (s[2] === 'day') return `#/p/${pid}`;
+  if (s[2] === 'report') return `#/p/${pid}/day/${s[3]}`;
+  // 新增記錄是從某一天點進來的，就回那一天
+  if (s[2] === 'new' && query.get('date')) return `#/p/${pid}/day/${query.get('date')}`;
+  return `#/p/${pid}`; // edit / reports / new
+}
+
 let renderToken = 0;
 
 async function render() {
-  const path = (location.hash.slice(1) || '/').split('?')[0];
+  const [rawPath, rawQuery] = (location.hash.slice(1) || '/').split('?');
+  const path = rawPath || '/';
   const token = ++renderToken;
   const hit = match(path);
 
   backBtn.hidden = path === '/' || path === '/lib' || path === '/settings';
+  // 先給依網址算出來的預設值，頁面自己有更好的答案時會在渲染時覆寫掉
+  setBack(parentOf(path, new URLSearchParams(rawQuery || '')));
   syncTabs(path);
 
   if (!hit) {
@@ -88,7 +112,7 @@ function syncTabs(path) {
   document.getElementById('settings-btn').classList.toggle('active', active === 'settings');
 }
 
-backBtn.addEventListener('click', () => history.back());
+backBtn.addEventListener('click', () => { location.hash = currentBack(); });
 
 /** 頂端的方案標示。付費層與免費層在保密上差很多，所以永遠顯示著。 */
 export async function refreshTierBadge() {

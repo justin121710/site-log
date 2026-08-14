@@ -4,7 +4,7 @@
 
 import {
   el, setTitle, field, input, toast, confirmDialog, fmtDate, fmtTime,
-  fmtDuration, today, debounce, flushActiveInput,
+  fmtDuration, today, debounce, flushActiveInput, setBack,
 } from '../ui.js';
 import {
   get, getSetting, newEntry, saveEntry, deleteEntry, addMedia, listMedia,
@@ -37,6 +37,14 @@ export default async function entryView(params) {
   let project = e.projectId ? await get('projects', e.projectId) : null;
 
   setTitle(isNew ? '新增記錄' : fmtDate(e.date));
+
+  /** 回到來的地方：有專案就回那天，沒有就回工項分類的分類頁。 */
+  const backTarget = () => {
+    if (e.projectId) return `#/p/${e.projectId}/day/${e.date}`;
+    return e.categoryIds.length ? `#/lib/${e.categoryIds[0]}` : '#/lib';
+  };
+  // 日期與分類在這一頁可以被改，所以交 function 給返回鍵，按下去的當下才算
+  setBack(backTarget);
 
   // 新記錄先寫進 DB，這樣照片與錄音才有 entryId 可以掛。
   if (isNew) {
@@ -505,18 +513,13 @@ export default async function entryView(params) {
   wrap.append(el('div', { class: 'card' }, [el('h2', { text: '備註' }), noteBox]));
 
   // ---------- 底部 ----------
-  /** 回到來的地方：有專案就回那天，沒有就回工項分類的分類頁。 */
-  const backTarget = () => {
-    if (e.projectId) return `#/p/${e.projectId}/day/${e.date}`;
-    return e.categoryIds.length ? `#/lib/${e.categoryIds[0]}` : '#/lib';
-  };
-
   const done = el('button', { class: 'btn block', type: 'button', text: '完成' });
   done.addEventListener('click', async () => {
     flushActiveInput();
     if (recorder.recording) { toast('還在錄音，先按停止'); return; }
     await saveEntry(e);
-    location.hash = backTarget();
+    // replace 而不是 push：這一頁的任務結束了，連 iOS 的側滑返回也不該再回得來
+    location.replace(backTarget());
   });
   wrap.append(done);
 
@@ -536,7 +539,7 @@ export default async function entryView(params) {
     const target = backTarget();
     await deleteEntry(e.id);
     toast('已刪除');
-    location.hash = target;
+    location.replace(target); // 這筆已經不存在了，不能讓它留在歷史裡
   });
   wrap.append(rm);
 

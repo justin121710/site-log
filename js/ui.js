@@ -154,6 +154,28 @@ export function setTitle(text) {
   document.getElementById('title').textContent = text;
 }
 
+// ---------- 左上角的返回 ----------
+//
+// 返回是「往上一層」，不是 history.back()。存完一筆記錄會把「回到那天」推進歷史，
+// history.back() 於是又把人送回剛剛在編輯的頁面——沒有人按返回是為了回到編輯畫面。
+// 沒有自己點進去新增或編輯，就不該回得去。
+
+let backTarget = '#/';
+
+/**
+ * 路由會依網址自動設好上一層，頁面自己更清楚時再覆寫（例如一筆記錄要回到它屬於的那一天）。
+ * @param {string | (() => string)} target 給 function 的話是按下去的當下才算，
+ *   頁面裡可以被改動的值（日期、分類）才不會用到舊的。
+ */
+export function setBack(target) {
+  backTarget = target || '#/';
+}
+
+export function currentBack() {
+  const t = typeof backTarget === 'function' ? backTarget() : backTarget;
+  return t || '#/';
+}
+
 /** debounce，用在自動存檔。 */
 export function debounce(fn, ms = 500) {
   let t = null;
