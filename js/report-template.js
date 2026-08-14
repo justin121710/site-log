@@ -113,6 +113,10 @@ function sectionsForLine(line, entry) {
     if (SECTION_HINTS[s].test(line)) hit.add(s);
   }
 
+  // 缺失的處理過程幾乎一定會提到「複驗」，但那是缺失追蹤的一部分，
+  // 不是「監督依圖說施工」。不擋的話同一句會在第二段與第五段各印一次。
+  if (hit.has('s5')) hit.delete('s2');
+
   // 施工類的記錄，只要這一行不是在講材料、安全或缺失，就是當天的施工進度。
   // 抽查（s2）與施工進度（s1）本來就會同時成立，那個重複是對的。
   const isConstruction = entry.categoryIds.some((c) => CONSTRUCTION_CATS.has(c));
