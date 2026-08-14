@@ -143,6 +143,16 @@ tools/icon-preview.html  icon 預覽（開發用）
   放在 query string 會被無視，每一頁都回同一批。見 tools/make-specs.mjs。
 - **更新法規包之後一定要 bump `sw.js` 的 CACHE**。`data/laws.json` 走 cache-first，
   不像程式碼有 network-first 兜底，不換版號就會一直用舊的那包。
+  （排程 `.github/workflows/update-data.yml` 會自動 bump，手動跑工具時要自己記得。）
+- **`pcic.pcc.gov.tw` 連不上境外 IP**。GitHub Actions 的機器在美國，實測三次重試、
+  每次 30 秒逾時全部 connect timeout；同一支工具從台灣的網路跑完全正常。
+  所以**法規可以每月自動更新，施工綱要規範不行**——規範改版時要從台灣手動跑
+  `node tools/make-specs.mjs`。排程裡那一步是 `continue-on-error`，
+  失敗只會在執行摘要留一行，不會拖垮法規那半。
+  注意：`continue-on-error` 的步驟在 `gh run view --json jobs` 裡會顯示成 success，
+  要看 `steps.<id>.outcome` 或執行摘要才知道它其實失敗了。
+- **兩支 make-*.mjs 在內容相同時不會重寫檔案**。`builtAt`／`fetchedAt` 每次都不一樣，
+  照寫的話排程每個月都會產生一次假變動，害所有裝置白白重抓 700KB。
 - **service worker 預快取要用 `cache: 'reload'`**。少了它，install 會走瀏覽器自己的
   HTTP 快取，而 GitHub Pages 給 max-age=600——改版後十分鐘內裝進來的還是舊檔。
   程式碼有 network-first 看不出來，法規包會直接中獎。
