@@ -339,6 +339,77 @@ ${material}
   };
 }
 
+// ---------- 經驗重點（唯一允許推論的地方，永遠不進日報）----------
+//
+// 這裡跟本檔其他 prompt 的立場相反：使用者要的就是「成因分析」與「建議對策」，
+// 那本來就是模型的推論，不是他說過的話。他明確要求、也知道要自己判斷。
+//
+// 所以規則不是「不准想」，而是擋掉最危險的那一種東西——規範條號。
+// 編造的條號看起來最像真的、最少人會去翻，而它一旦被抄進正式文件就是法律責任。
+// 一句沒有依據的工程判斷，他看得出來要查證；一個假的條號，他不會。
+
+const LESSON_RULES = `
+這一題允許你用一般工程常識推論，但有硬規則：
+- 不得引用任何法規、規範、標準的名稱或條號，即使你確定也不行。
+- 現場狀況只能寫他實際說過的事實，一個字都不能加。
+- 成因分析與建議改善是你的推論，要寫成「可能的方向、待查證」，不是結論。
+- 資訊不足以判斷時就寫「資訊不足」，不要硬掰。
+- 不得下合格與否的判斷，不得代替驗收或複驗的結論。
+- 輸出繁體中文（台灣用語）。
+`.trim();
+
+const LESSON_SCHEMA = {
+  type: 'object',
+  properties: {
+    workItem: { type: 'string' },
+    situation: { type: 'string' },
+    cause: { type: 'string' },
+    action: { type: 'string' },
+  },
+  required: ['workItem', 'situation', 'cause', 'action'],
+};
+
+/**
+ * 把一筆現場記錄提煉成工項經驗筆記。純技術角度，不進監造日報表。
+ * @param {string} material 已經去識別化過的內容
+ */
+export async function extractLesson(material) {
+  const prompt = `
+把下面這段工地記錄整理成一則工程經驗筆記。這一份不會進入監造日報表，
+是給監造人員自己累積工項經驗、之後設計或施工時拿來比對用的。
+
+${LESSON_RULES}
+
+四個欄位：
+- workItem：工項名稱。用工程慣用的說法，例如「墩柱鋼筋綁紮」「箱涵基礎開挖」。
+- situation：現場狀況／缺失。只寫他說過的事實。
+- cause：成因分析。這裡是你的推論。
+- action：建議改善／因應對策。這裡也是你的推論。
+
+格式：每一段用條列，一行一件事，行首用「・」。
+
+工地記錄：
+"""
+${material}
+"""
+`.trim();
+
+  const out = await callJSON([{ text: prompt }], LESSON_SCHEMA, { temperature: 0.3 });
+  return {
+    workItem: out.workItem || '',
+    situation: out.situation || '',
+    cause: out.cause || '',
+    action: out.action || '',
+  };
+}
+
+export const LESSON_FIELDS = [
+  { key: 'workItem', title: '工項名稱', inferred: false },
+  { key: 'situation', title: '現場狀況／缺失', inferred: false },
+  { key: 'cause', title: '成因分析', inferred: true },
+  { key: 'action', title: '建議改善／因應對策', inferred: true },
+];
+
 // ---------- 單張照片（預設關閉，必須使用者手動開啟並逐張確認）----------
 
 export async function describeImage(blob, question) {

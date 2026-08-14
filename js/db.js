@@ -206,6 +206,10 @@ export function newEntry(projectId, date) {
     ai: null, // { fields, suggestedCategories, tidied, model, at }
     verified: false, // 你勾「已確認」才會變 true
     verifiedNote: '', // 依據：規範章節 / 誰說的
+    // 經驗重點。唯一含 AI 推論的欄位，刻意跟 ai 分開存，
+    // 這樣日報與所有報表只要不讀它，就永遠不可能把推論寫進正式表報。
+    lesson: null, // { workItem, situation, cause, action, model, at }
+    lessonVerified: false,
     // 缺失追蹤：改正往往是幾天後的另一筆記錄，沒有單號就串不起來，
     // 追蹤表會退化成「所有缺失按日期排」的清單。
     defectNo: '',

@@ -3,7 +3,7 @@
 // 資料流：拍照／錄音 → 逐字稿（預設 iOS 鍵盤聽寫）→ 你按「AI 整理」才會有文字離開裝置。
 
 import {
-  el, setTitle, field, input, toast, confirmDialog, fmtDate, fmtTime,
+  el, append, setTitle, field, input, toast, confirmDialog, fmtDate, fmtTime,
   fmtDuration, today, debounce, flushActiveInput, setBack,
 } from '../ui.js';
 import {
@@ -20,7 +20,7 @@ import { confirmUpload, confirmAudioUpload } from '../confirm-upload.js';
 import { icon } from '../icons.js';
 import { readGpsFromJpeg } from '../exif.js';
 import { formatSite } from '../twzones.js';
-import { tidyAndExtract, transcribe, describeImage } from '../gemini.js';
+import { tidyAndExtract, transcribe, describeImage, extractLesson, LESSON_FIELDS } from '../gemini.js';
 import { fixTerms } from '../glossary.js';
 import { applyWatermark } from '../watermark.js';
 
@@ -306,6 +306,105 @@ export default async function entryView(params) {
       // 關掉 AI 之後仍然要看得到以前整理過的內容，只是不能再產生新的
       aiOn ? el('div', { class: 'row', style: 'margin-bottom:10px' }, [aiBtn]) : null,
       aiBox,
+    ]));
+  }
+
+  // ---------- 經驗重點（AI 推論，永遠不進日報與報表）----------
+  const lessonBox = el('div');
+  function renderLesson() {
+    lessonBox.replaceChildren();
+    if (!e.lesson) return;
+
+    const block = el('div', { class: `ai-block ${e.lessonVerified ? 'verified' : ''}` });
+    append(block, el('div', { class: 'row', style: 'margin-bottom:6px' }, [
+      el('span', {
+        class: `badge ${e.lessonVerified ? 'badge-verified' : 'badge-unverified'}`,
+        text: e.lessonVerified ? '已確認' : '未查證',
+      }),
+      el('span', { class: 'spacer' }),
+      el('span', { class: 'muted', text: e.lesson.model || '' }),
+    ]));
+
+    for (const f of LESSON_FIELDS) {
+      const val = (e.lesson[f.key] || '').trim();
+      if (!val) continue;
+      append(block,
+        el('div', { class: 'muted', style: 'margin-top:10px;font-size:13px;font-weight:600' },
+          `【${f.title}】${f.inferred ? '　AI 推論' : ''}`),
+        el('div', { style: 'white-space:pre-wrap' }, val));
+    }
+    lessonBox.append(block);
+
+    const chk = el('input', { type: 'checkbox', style: 'width:22px;min-height:22px;flex:none' });
+    chk.checked = !!e.lessonVerified;
+    chk.addEventListener('change', () => {
+      e.lessonVerified = chk.checked;
+      saveEntry(e);
+      renderLesson();
+    });
+
+    const rm = el('button', { class: 'btn ghost sm', type: 'button', text: '刪掉這則' });
+    rm.addEventListener('click', async () => {
+      e.lesson = null;
+      e.lessonVerified = false;
+      await saveEntry(e);
+      renderLesson();
+    });
+
+    lessonBox.append(
+      el('label', { class: 'row', style: 'gap:10px;margin-top:10px;cursor:pointer' }, [
+        chk,
+        el('span', { text: '成因與對策我自己判斷過了' }),
+      ]),
+      el('div', { style: 'margin-top:8px' }, [rm]),
+    );
+  }
+  renderLesson();
+
+  const lessonBtn = el('button', { class: 'btn ghost', type: 'button' }, [icon('sparkle'), '提煉經驗重點']);
+  const setLessonLabel = (busy) => {
+    lessonBtn.replaceChildren(icon('sparkle'), busy ? '提煉中…' : '提煉經驗重點');
+  };
+  lessonBtn.addEventListener('click', async () => {
+    flushActiveInput();
+    const src = (e.ai?.tidied || transcriptBox.value || e.note || '').trim();
+    if (!src) { toast('先有逐字稿或備註才有東西可以提煉'); return; }
+
+    // 工項與位置一起送，模型才知道這是在講哪一種工作
+    const place = [e.floor, e.gridline, e.area].filter(Boolean).join(' ');
+    const ctx = [
+      e.categoryIds.length ? `工項分類：${e.categoryIds.map(categoryName).join('、')}` : '',
+      place ? `位置：${place}` : '',
+    ].filter(Boolean).join('\n');
+
+    const toSend = await confirmUpload(ctx ? `${ctx}\n\n${src}` : src, {
+      title: '要送這筆記錄提煉經驗重點嗎？',
+    });
+    if (toSend === null) return;
+
+    lessonBtn.disabled = true;
+    setLessonLabel(true);
+    try {
+      const out = await extractLesson(toSend);
+      e.lesson = { ...out, model: await getSetting('geminiModel', ''), at: new Date().toISOString() };
+      e.lessonVerified = false;
+      await saveEntry(e);
+      renderLesson();
+    } catch (err) {
+      toast(err.message, 5000);
+    } finally {
+      lessonBtn.disabled = false;
+      setLessonLabel(false);
+    }
+  });
+
+  if (aiOn || e.lesson) {
+    wrap.append(el('div', { class: 'card' }, [
+      el('h2', { text: '經驗重點' }),
+      // 這一段留著：這是全 App 唯一會出現「模型自己想的」內容的地方
+      el('div', { class: 'notice warn' }, '成因與對策是 AI 推論，不會進日報與任何報表。'),
+      aiOn ? el('div', { class: 'row', style: 'margin-bottom:10px' }, [lessonBtn]) : null,
+      lessonBox,
     ]));
   }
 
