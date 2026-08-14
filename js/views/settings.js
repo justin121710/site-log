@@ -349,6 +349,9 @@ export default async function settings() {
     picker,
     est ? el('p', { class: 'muted', style: 'margin-top:10px' },
       `已用 ${fmtBytes(est.usage)}　可用約 ${fmtBytes(est.quota)}`) : null,
+    // 版本編號。修完一個 bug 之後要能一眼確認手機上跑的到底是不是新版，
+    // 不然「還是壞的」跟「還沒更新到」分不出來。
+    await versionLine(),
     await persistenceNotice(),
   ]));
 
@@ -372,6 +375,14 @@ export default async function settings() {
   wrap.append(wipe);
 
   return wrap;
+}
+
+/** 目前這台裝置上跑的是哪一版。版號就是 sw.js 的 CACHE 名稱，不用另外維護。 */
+async function versionLine() {
+  const keys = await caches?.keys?.().catch(() => []) ?? [];
+  const cur = keys.find((k) => k.startsWith('site-log-'));
+  if (!cur) return null; // 沒有 service worker（例如直接開檔案）就不要顯示
+  return el('p', { class: 'muted', style: 'margin-top:4px' }, `版本 ${cur.replace('site-log-', '')}`);
 }
 
 /**

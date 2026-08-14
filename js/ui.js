@@ -130,6 +130,18 @@ export function input(attrs = {}) {
   return el('input', { type: 'text', ...attrs });
 }
 
+/**
+ * 日期欄位。外面一定要再包一層 .datebox。
+ *
+ * iOS Safari 的 input[type=date] 是用內部的 shadow DOM 決定自己多寬的，
+ * width、max-width、min-width 都壓不住它，「2026年8月14日」這種格式一長
+ * 就會整個框凸出卡片外。與其跟它拗，不如讓它別參與版面計算：
+ * 外框負責大小，input 絕對定位塞進去，它想多寬都影響不了任何人。
+ */
+export function dateField(label, node, hint = '') {
+  return field(label, el('div', { class: 'datebox' }, [node]), hint);
+}
+
 export function textarea(attrs = {}) {
   return el('textarea', attrs);
 }

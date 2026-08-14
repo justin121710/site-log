@@ -1,6 +1,6 @@
 // 專案的報表中心。日報在「某一天」那頁產，這裡放跨日期的彙整報表。
 
-import { el, setTitle, field, input, toast, today, flushActiveInput } from '../ui.js';
+import { el, setTitle, field, dateField, input, toast, today, flushActiveInput } from '../ui.js';
 import {
   get, listEntries, getAll, listProjects, groupDefects, listEntriesByCategory,
 } from '../db.js';
@@ -98,7 +98,7 @@ export default async function reports({ projectId }) {
   wrap.append(el('div', { class: 'card' }, [
     el('h2', { text: '期間報表（週報／月報）' }),
     el('div', { class: 'chips', style: 'margin-bottom:12px' }, quick),
-    el('div', { class: 'grid2 dates' }, [field('起', fromInput), field('迄', toInput)]),
+    el('div', { class: 'grid2 dates' }, [dateField('起', fromInput), dateField('迄', toInput)]),
     periodBtn,
   ]));
 

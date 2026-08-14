@@ -267,22 +267,42 @@ input:focus, select:focus, textarea:focus {
   outline-offset: 1px;
 }
 
-/* iOS Safari 的日期欄位是用內部的 shadow DOM 元素決定寬度的，外面的 width:100%
-   壓不住它。中文格式「2026年8月14日」又比 2026/08/14 長一截，於是整個框凸出卡片外。
-   （值自己置中，就是它在用內容寬度撐版面的徵兆。） */
+/* 日期欄位的外框，見 ui.js 的 dateField()。
+ *
+ * iOS Safari 的 input[type=date] 是用內部的 shadow DOM 決定自己多寬的，
+ * width / max-width / min-width 通通壓不住它，「2026年8月14日」這種長格式
+ * 就把整個框推出卡片外。調 input 本身試過兩輪都無效，所以改成不跟它拗：
+ * 外框負責邊界、圓角與大小，input 絕對定位塞進去——絕對定位的元素不參與
+ * 版面計算，它想多寬都影響不了任何人，多出來的部分被外框切掉。 */
+.datebox {
+  position: relative;
+  overflow: hidden;
+  min-height: var(--tap);
+  border: 1px solid var(--line);
+  border-radius: 11px;
+  background: var(--bg);
+}
+
+.datebox input[type=date] {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+  border: 0;
+  border-radius: inherit;
+  background: transparent;
+  /* 日期是用選的不是用打的，iOS 不會因為字小於 16px 就放大頁面。
+     縮一級讓中文長格式真的塞得進去，而不是塞進去被切掉。 */
+  font-size: 15px;
+}
+
+.datebox:focus-within { outline: 2px solid var(--accent); outline-offset: 1px; }
+.datebox input[type=date]:focus { outline: 0; }
+
+/* 值靠左。iOS 預設把它置中，那就是它在用內容寬度撐版面的徵兆。 */
 input[type=date]::-webkit-date-and-time-value { width: 100%; text-align: left; margin: 0; }
 input[type=date]::-webkit-datetime-edit { padding: 0; }
-
-/* 只有 iOS Safari 支援 -webkit-touch-callout，拿它把修正限定在會出事的瀏覽器上，
-   桌機 Chrome 的日曆圖示就不會被 appearance 一起拿掉。 */
-@supports (-webkit-touch-callout: none) {
-  input[type=date] {
-    display: block;
-    -webkit-appearance: textfield;
-    min-width: 0;
-    max-width: 100%;
-  }
-}
 
 .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 0 10px; }
 

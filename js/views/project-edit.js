@@ -1,6 +1,6 @@
 // 新增／編輯專案。表頭欄位直接對應公共工程監造日報表，建一次之後日報自動帶入。
 
-import { el, setTitle, field, input, toast, confirmDialog, flushActiveInput } from '../ui.js';
+import { el, setTitle, field, dateField, input, toast, confirmDialog, flushActiveInput } from '../ui.js';
 import { get, newProject, saveProject, del, listEntries, deleteEntry } from '../db.js';
 import { COUNTIES, districtsOf, formatSite } from '../twzones.js';
 
@@ -15,7 +15,10 @@ export default async function projectEdit({ projectId }) {
   const f = {};
   const mk = (key, label, attrs = {}, hint = '') => {
     f[key] = input({ value: p[key] ?? '', ...attrs });
-    return field(label, f[key], hint);
+    // 日期欄位要多包一層外框，不然 iOS 會把它撐出卡片外
+    return attrs.type === 'date'
+      ? dateField(label, f[key], hint)
+      : field(label, f[key], hint);
   };
 
   wrap.append(el('div', { class: 'card' }, [
