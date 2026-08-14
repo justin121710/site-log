@@ -63,6 +63,15 @@ const pack = {
 
 const out = path.join(import.meta.dirname, '..', 'data', 'specs.json');
 await fs.mkdir(path.dirname(out), { recursive: true });
+
+// 章節沒變就不要重寫，理由同 make-laws.mjs：fetchedAt 每次都不一樣
+const meaningful = JSON.stringify(pack.chapters);
+const before = await fs.readFile(out, 'utf8').catch(() => '');
+if (before && JSON.stringify(JSON.parse(before).chapters) === meaningful) {
+  console.log('章節與上次完全相同，不重寫檔案');
+  process.exit(0);
+}
+
 await fs.writeFile(out, JSON.stringify(pack));
 const { size } = await fs.stat(out);
 

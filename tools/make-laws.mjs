@@ -81,6 +81,19 @@ const pack = {
 
 const out = path.join(import.meta.dirname, '..', 'data', 'laws.json');
 await fs.mkdir(path.dirname(out), { recursive: true });
+
+// 條文沒變就不要重寫。builtAt 每次都不一樣，照寫的話排程會每個月產生一次
+// 假變動，害所有裝置白白重抓 700KB。
+const meaningful = JSON.stringify({ dataDate: pack.dataDate, laws: pack.laws });
+const before = await fs.readFile(out, 'utf8').catch(() => '');
+if (before) {
+  const old = JSON.parse(before);
+  if (JSON.stringify({ dataDate: old.dataDate, laws: old.laws }) === meaningful) {
+    console.log('條文與上次完全相同，不重寫檔案');
+    process.exit(0);
+  }
+}
+
 await fs.writeFile(out, JSON.stringify(pack));
 const { size } = await fs.stat(out);
 console.log(`\n共 ${laws.length} 部、${laws.reduce((n, l) => n + l.articles.length, 0)} 條`);

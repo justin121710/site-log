@@ -1,0 +1,95 @@
+# 每月自動重抓法規與施工綱要規範。
+#
+# 只有內容真的變動時才 commit——兩支工具在內容相同時不會重寫檔案，
+# 所以這裡用 git diff 判斷就夠了。
+#
+# 抓失敗、法規改名、章數對不上時，工具會直接中止（見 tools/make-*.mjs 裡的檢查），
+# 這個工作流程就會失敗並通知。寧可不更新，也不要把爛資料推上去。
+
+name: 更新法規與規範資料
+
+on:
+  schedule:
+    # 每月 1 號 21:00 UTC = 台灣時間 2 號清晨 05:00
+    - cron: '0 21 1 * *'
+  workflow_dispatch: # 也可以到 Actions 頁面手動按
+
+permissions:
+  contents: write
+  pages: write
+
+concurrency:
+  group: update-data
+  cancel-in-progress: false
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: 重抓兩份資料
+        run: |
+          node tools/make-laws.mjs
+          node tools/make-specs.mjs
+
+      - name: 有沒有真的變動
+        id: diff
+        run: |
+          if git diff --quiet -- data/; then
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+            echo "資料沒有變動，這個月不用做事"
+          else
+            echo "changed=true" >> "$GITHUB_OUTPUT"
+            git diff --stat -- data/
+          fi
+
+      # service worker 的版號不動，裝置上就會一直用舊的那份：
+      # data/*.json 走 cache-first，沒有 network-first 兜底。
+      - name: bump service worker 版號
+        if: steps.diff.outputs.changed == 'true'
+        run: |
+          cur=$(grep -oP "site-log-v\K[0-9]+" sw.js)
+          next=$((cur + 1))
+          sed -i "s/site-log-v$cur/site-log-v$next/" sw.js
+          echo "CACHE v$cur → v$next"
+
+      - name: commit 並 push
+        if: steps.diff.outputs.changed == 'true'
+        run: |
+          laws=$(node -p "require('./data/laws.json').dataDate")
+          specs=$(node -p "require('./data/specs.json').fetchedAt")
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add data/ sw.js
+          git commit -m "自動更新法規與規範資料
+
+          法規資料日期：${laws}
+          規範抓取日期：${specs}
+
+          由 .github/workflows/update-data.yml 排程產生。"
+          git push
+
+      # GITHUB_TOKEN 推的 commit 不一定會觸發 Pages 建置（legacy 模式的已知坑）。
+      # 先等它自己動，真的沒動才補送一次——不要無條件補送，
+      # 那會跟自動觸發的那次互相取消。
+      - name: 確認 Pages 有跟上
+        if: steps.diff.outputs.changed == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          sha=$(git rev-parse HEAD)
+          for i in $(seq 1 12); do
+            sleep 15
+            built=$(gh api repos/${{ github.repository }}/pages/builds/latest --jq .commit 2>/dev/null || echo '')
+            if [ "$built" = "$sha" ]; then
+              echo "Pages 已建置 ${sha}"
+              exit 0
+            fi
+          done
+          echo "Pages 三分鐘內沒有自動建置，補送一次"
+          gh api -X POST repos/${{ github.repository }}/pages/builds
