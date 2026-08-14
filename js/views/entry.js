@@ -219,22 +219,27 @@ export default async function entryView(params) {
     toast(`修正 ${changes.length} 處：${changes.join('、')}`, 4000);
   });
 
+  /**
+   * 帶著這筆記錄的關鍵詞去查法規與施工綱要規範。
+   * 用 button 不用 a：關鍵詞要在「按下去的當下」才算，
+   * 不然先渲染好的連結會停在你還沒選分類、還沒打子項的那個瞬間。
+   */
+  const lawBtn = el('button', { class: 'btn ghost sm', type: 'button' },
+    [icon('book', { size: 18 }), '查法規']);
+  lawBtn.addEventListener('click', () => {
+    const q = (e.subtags.length ? e.subtags : e.categoryIds.map(categoryName)).slice(0, 3).join(' ');
+    location.hash = `#/laws${q ? `?q=${encodeURIComponent(q)}` : ''}`;
+  });
+
   wrap.append(el('div', { class: 'card' }, [
     el('h2', { text: '逐字稿' }),
     transcriptBox,
-    el('div', { class: 'row wrap', style: 'gap:8px;margin-top:8px' }, [fixBtn]),
+    // 查法規放這裡而不是放在 AI 整理那張卡片裡：那張卡片要有 AI 產出才會出現，
+    // AI 關掉的人就永遠看不到這顆按鈕，但查規範跟 AI 一點關係都沒有。
+    el('div', { class: 'row wrap', style: 'gap:8px;margin-top:8px' }, [fixBtn, lawBtn]),
   ]));
 
   // ---------- AI 整理 ----------
-
-  /** 帶著這筆記錄的關鍵詞去查法規。子項最具體，沒有子項就退回工項分類名稱。 */
-  const lawLink = () => {
-    const q = (e.subtags.length ? e.subtags : e.categoryIds.map(categoryName)).slice(0, 3).join(' ');
-    return el('a', {
-      href: `#/laws${q ? `?q=${encodeURIComponent(q)}` : ''}`,
-      class: 'btn ghost sm',
-    }, [icon('book', { size: 18 }), '查法規']);
-  };
 
   const aiBox = el('div');
   function renderAI() {
@@ -271,8 +276,6 @@ export default async function entryView(params) {
         el('span', { text: '我已經問過前輩／查過規範，這段內容沒問題' }),
       ]),
       el('div', { style: 'margin-top:8px' }, [noteInput]),
-      // 要寫依據的那一刻，才是他需要查法規的那一刻
-      el('div', { style: 'margin-top:8px' }, [lawLink()]),
     );
   }
   renderAI();
