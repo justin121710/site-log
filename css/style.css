@@ -292,6 +292,11 @@ input:focus, select:focus, textarea:focus {
   border: 0;
   border-radius: inherit;
   background: transparent;
+  /* iOS 不會像文字欄位那樣把日期的值垂直置中，它是貼著內容框頂端排的。
+     改用 flex 自己置中，上下留白就交給對齊而不是 padding。 */
+  display: flex;
+  align-items: center;
+  padding: 0 12px;
   /* 日期是用選的不是用打的，iOS 不會因為字小於 16px 就放大頁面。
      縮一級讓中文長格式真的塞得進去，而不是塞進去被切掉。 */
   font-size: 15px;
@@ -300,9 +305,13 @@ input:focus, select:focus, textarea:focus {
 .datebox:focus-within { outline: 2px solid var(--accent); outline-offset: 1px; }
 .datebox input[type=date]:focus { outline: 0; }
 
-/* 值靠左。iOS 預設把它置中，那就是它在用內容寬度撐版面的徵兆。 */
+/* 值靠左、不要自己加上下留白（那是把值頂到框上緣的元兇之一）。 */
 input[type=date]::-webkit-date-and-time-value { width: 100%; text-align: left; margin: 0; }
-input[type=date]::-webkit-datetime-edit { padding: 0; }
+input[type=date]::-webkit-datetime-edit { padding: 0; margin: 0; line-height: 1; }
+
+/* 已知的小副作用：input 變成 flex 之後，桌機 Chrome 的日曆圖示會黏在日期文字
+   右邊而不是欄位最右邊。試過 margin-left:auto 與 flex:1，WebKit 的內部
+   pseudo element 不吃。iOS 上根本沒有這顆圖示，所以不為了它換掉垂直置中的做法。 */
 
 .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 0 10px; }
 
