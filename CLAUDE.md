@@ -69,7 +69,8 @@ js/confirm-upload.js  送出前預覽（可改可取消）
 js/media.js           相機、錄音、GPS
 js/watermark.js       浮水印（只在顯示與匯出時疊，原圖永遠乾淨）
 js/zip.js             自寫 STORE-only ZIP
-js/export.js          備份與 Markdown 匯出
+js/export.js          備份與 Markdown 匯出（build* 只打包，export* 才送出分享）
+js/export-all.js      一鍵全部匯出：報表＋備份＋Markdown 併成一批交給分享選單
 js/export-ui.js       匯出對話框 + presentReport()
 js/markdown.js        Markdown 產生
 js/report-template.js 日報格式 + buildLocalDraft()（不用 AI 的分段）
@@ -116,7 +117,8 @@ tools/icon-preview.html  icon 預覽（開發用）
 
 功能都完成並在正式網址驗證過：專案/記錄/照片/錄音/聽寫、17 項工項分類、
 缺失追蹤、六種 HTML 報表（日報、施工照片表、期間報表、缺失追蹤表、
-工項彙整、專案完整本）、備份 zip、Markdown 匯出、AI 總開關、本機日報草稿。
+工項彙整、專案完整本）、備份 zip、Markdown 匯出、AI 總開關、本機日報草稿、
+一鍵全部匯出。
 
 使用者的 Gemini 預付額度已用完，**目前 AI 是關閉狀態**，用純手動流程。
 
@@ -138,10 +140,23 @@ tools/icon-preview.html  icon 預覽（開發用）
 
 ### 實作順序
 
-**第一步（先做這個，使用者選的）：一鍵全部匯出**
+**第一步：一鍵全部匯出 —— 已完成（`js/export-all.js`）**
 
-一個按鈕，一次產生報表 + 完整備份 + Markdown，打包成一批交給分享選單，
-讓使用者做一次分享動作而不是三次。純本機、零外部相依、零登入風險。
+匯出對話框最上面那顆按鈕，三個入口（某一天／專案／設定的全部資料）共用。
+決定過的細節：
+
+- 報表依範圍挑：某一天 → 監造日報；一個專案 → 完整本＋缺失追蹤表（有單號才有）；
+  全部 → 每個有記錄的專案各一套。沒歸專案的記錄沒有報表（報表都以專案為單位），
+  但備份與 Markdown 收得到。
+- 那天還沒產過日報就用 `buildLocalDraft()` 現做一份，**不呼叫 AI，也不寫回 reports**——
+  一鍵匯出不該偷改他存的日報。
+- **多檔一次分享**：`shareFiles()` 先試 `navigator.share({ files: [...] })` 送三個檔，
+  iOS 的「儲存到檔案」會把整批存進同一個資料夾。分享選單吃不下（桌機、舊 iOS）
+  才退回打包成一個 zip 再分享一次，反正仍然是「按一次」。
+- 報表照片超過 300 張就整批不附照片（data URI 會在手機上爆記憶體），
+  狀態列會講，原圖照樣一張不少在同批的備份 zip 裡。
+- 使用者在分享選單按取消時 **不會**更新「上次備份時間」，首頁的備份提醒才不會被騙過去。
+
 先讓他用一陣子，看夠不夠。
 
 **第二步（如果還是嫌麻煩才做）：OneDrive 串接**

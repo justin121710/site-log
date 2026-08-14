@@ -2,6 +2,7 @@
 
 import { el, toast, fmtBytes } from './ui.js';
 import { exportBackup, exportMarkdown, markdownText, shareTextFile } from './export.js';
+import { exportEverything } from './export-all.js';
 
 /**
  * 產好報表之後怎麼交給使用者。
@@ -76,12 +77,17 @@ export function exportDialog(scope) {
     status.textContent = '打包中，照片多的話要等一下…';
     try {
       const r = await fn();
-      status.textContent = r
-        ? `完成：${r.entries} 筆記錄`
+      if (!r) status.textContent = '完成';
+      else if (r.mode === 'cancelled') status.textContent = '已取消';
+      else {
+        status.textContent = `完成：${r.entries} 筆記錄`
+          + (r.reports ? `、${r.reports} 份報表` : '')
           + (r.media ? `、${r.media} 個檔案` : '')
           + (r.images ? `、${r.images} 張照片` : '')
           + `，共 ${fmtBytes(r.bytes)}`
-        : '完成';
+          // 照片仍在備份 zip 裡，但報表印出來會是純文字，這件事一定要講
+          + (r.droppedPhotos ? `。照片 ${r.droppedPhotos} 張太多，報表沒附照片` : '');
+      }
     } catch (e) {
       status.textContent = '';
       toast(`${label}失敗：${e.message}`, 5000);
@@ -91,7 +97,14 @@ export function exportDialog(scope) {
     }
   };
 
-  const backupBtn = el('button', { class: 'btn block', type: 'button', text: '完整備份（.zip）' });
+  // 一次做完、一次分享。按鈕名字本身就要講完它包含什麼，
+  // 不然使用者在分享選單裡看到三個檔案會不知道哪個是哪個。
+  const allBtn = el('button', { class: 'btn block', type: 'button', text: '一鍵全部匯出（報表＋備份＋Markdown）' });
+  allBtn.addEventListener('click', () => run(allBtn, '匯出', () => exportEverything(scope, {
+    onStep: (text) => { status.textContent = text; },
+  })));
+
+  const backupBtn = el('button', { class: 'btn ghost block', type: 'button', text: '完整備份（.zip）' });
   backupBtn.addEventListener('click', () => run(backupBtn, '備份', () => exportBackup(scope)));
 
   const mdBtn = el('button', { class: 'btn ghost block', type: 'button', text: 'Markdown（給 Notion 匯入）' });
@@ -116,6 +129,8 @@ export function exportDialog(scope) {
   dlg.append(el('div', {}, [
     el('h2', { text: `匯出：${scope.title}` }),
 
+    allBtn,
+    el('div', { style: 'height:10px' }),
     backupBtn,
     el('div', { style: 'height:14px' }),
     // 這一句留著：Markdown 匯出就是資料真正要離開裝置的那一刻

@@ -3,6 +3,9 @@
 //   完整備份 zip —— 給「手機掛掉也救得回來」用。含原始 JSON 與原檔照片、錄音。
 //   Markdown zip —— 給「收進 Notion／Obsidian」用。人看得懂，但不是完整資料。
 //
+// buildBackup()／buildMarkdown() 只負責打包不送出，exportBackup()／exportMarkdown()
+// 才會叫分享選單。分開是為了讓 export-all.js 能把兩包跟報表併成同一批分享。
+//
 // 刻意不做自動雲端同步：iOS 的「加到主畫面」PWA 一跑 OAuth 就會被踢到 Safari 分頁回不來，
 // 而且那等於把整包工地資料交給第三方服務，跟這個 App 的其他設計互相矛盾。
 // 手動匯出走 iOS 分享選單雖然土，但它一定會成功，而且每一次都是你自己按的。
@@ -53,9 +56,10 @@ async function collectEntries({ projectId, date } = {}) {
 // ---------- 完整備份 ----------
 
 /**
+ * 打包完整備份，但先不送出。一鍵全部匯出要把它跟報表、Markdown 併成同一批分享。
  * @param {{ projectId?: string, date?: string }} scope
  */
-export async function exportBackup(scope = {}) {
+export async function buildBackup(scope = {}) {
   const isFull = !scope.projectId && !scope.date;
 
   const [projects, allEntries, days, reports, settings] = await Promise.all([
@@ -111,12 +115,29 @@ export async function exportBackup(scope = {}) {
 
   const zip = await makeZip(files);
   const label = await scopeLabel(scope);
-  await share(zip, `site-log-備份-${label}-${today()}.zip`);
 
+  return {
+    blob: zip,
+    filename: `site-log-備份-${label}-${today()}.zip`,
+    isFull,
+    entries: entries.length,
+    media: mediaIndex.length,
+  };
+}
+
+/**
+ * @param {{ projectId?: string, date?: string }} scope
+ */
+export async function exportBackup(scope = {}) {
+  const backup = await buildBackup(scope);
+  const mode = await share(backup.blob, backup.filename);
   // 只有整包備份才算數。單日匯出救不回整支手機。
-  if (isFull) await setSetting('lastBackupAt', new Date().toISOString());
+  if (backup.isFull && mode !== 'cancelled') await markBackedUp();
+  return { entries: backup.entries, media: backup.media, bytes: backup.blob.size, mode };
+}
 
-  return { entries: entries.length, media: mediaIndex.length, bytes: zip.size };
+export async function markBackedUp() {
+  await setSetting('lastBackupAt', new Date().toISOString());
 }
 
 // ---------- Markdown ----------
@@ -125,7 +146,7 @@ export async function exportBackup(scope = {}) {
  * 匯出成 Notion／Obsidian 讀得懂的 Markdown zip，照片一起打包。
  * Notion 只認得 zip 內的相對路徑，所以 .md 跟 images/ 必須在同一個資料夾底下。
  */
-export async function exportMarkdown(scope = {}) {
+export async function buildMarkdown(scope = {}) {
   const entries = await collectEntries(scope);
   if (!entries.length) throw new Error('這個範圍裡沒有記錄');
 
@@ -165,8 +186,21 @@ export async function exportMarkdown(scope = {}) {
   );
 
   const zip = await makeZip(files);
-  await share(zip, `${folder}-markdown.zip`);
-  return { entries: entries.length, images: files.length - 2, bytes: zip.size };
+  return {
+    blob: zip,
+    filename: `${folder}-markdown.zip`,
+    entries: entries.length,
+    images: files.length - 2,
+  };
+}
+
+/**
+ * @param {{ projectId?: string, date?: string }} scope
+ */
+export async function exportMarkdown(scope = {}) {
+  const md = await buildMarkdown(scope);
+  const mode = await share(md.blob, md.filename);
+  return { entries: md.entries, images: md.images, bytes: md.blob.size, mode };
 }
 
 /** 純文字版，給「直接複製貼上」用。沒有照片。 */
@@ -198,15 +232,18 @@ export async function shareTextFile(text, filename, mime = 'text/html;charset=ut
   await share(new Blob([text], { type: mime }), filename);
 }
 
-/** iOS 上優先走分享選單，使用者才能直接選「儲存到檔案」或雲端硬碟。 */
+/**
+ * iOS 上優先走分享選單，使用者才能直接選「儲存到檔案」或雲端硬碟。
+ * @returns {Promise<'shared'|'cancelled'|'downloaded'>}
+ */
 async function share(blob, filename) {
   const file = new File([blob], filename, { type: blob.type });
   if (navigator.canShare?.({ files: [file] })) {
     try {
       await navigator.share({ files: [file], title: filename });
-      return;
+      return 'shared';
     } catch (err) {
-      if (err?.name === 'AbortError') return; // 使用者自己取消，不算失敗
+      if (err?.name === 'AbortError') return 'cancelled'; // 使用者自己取消，不算失敗
       // 其他錯誤就退回下載
     }
   }
@@ -218,6 +255,32 @@ async function share(blob, filename) {
   a.click();
   setTimeout(() => URL.revokeObjectURL(url), 10000);
   toast('已開始下載');
+  return 'downloaded';
+}
+
+/**
+ * 一次把好幾個檔案交給分享選單。iOS 的分享選單吃得下多檔，
+ * 「儲存到檔案」會把整批存進同一個資料夾——這就是一鍵全部匯出想要的結果。
+ *
+ * 吃不下（桌機瀏覽器、舊版 iOS）就退回打包成一個 zip 再分享一次。
+ * 反正裡面的東西一樣，仍然是「按一次」。
+ *
+ * @param {{name: string, blob: Blob}[]} files
+ * @param {string} bundleName 退回打包時用的 zip 檔名
+ * @returns {Promise<'shared'|'cancelled'|'downloaded'>}
+ */
+export async function shareFiles(files, bundleName) {
+  const asFiles = files.map((f) => new File([f.blob], f.name, { type: f.blob.type }));
+  if (asFiles.length > 1 && navigator.canShare?.({ files: asFiles })) {
+    try {
+      await navigator.share({ files: asFiles, title: bundleName });
+      return 'shared';
+    } catch (err) {
+      if (err?.name === 'AbortError') return 'cancelled';
+      // 其他錯誤就退回打包
+    }
+  }
+  return share(await makeZip(files), bundleName);
 }
 
 // ---------- 備份狀態 ----------
