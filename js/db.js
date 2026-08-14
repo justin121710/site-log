@@ -92,6 +92,11 @@ export async function del(store, key) {
   return wrap((await tx(store, 'readwrite')).delete(key));
 }
 
+/** 清空一個 store。目前只有「完全取代」的還原會用到。 */
+export async function clearStore(store) {
+  return wrap((await tx(store, 'readwrite')).clear());
+}
+
 export async function getAllByIndex(store, indexName, query) {
   const os = await tx(store);
   return wrap(os.index(indexName).getAll(query));

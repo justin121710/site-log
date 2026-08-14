@@ -84,7 +84,10 @@ export async function buildBackup(scope = {}) {
       const dir = `media/${e.projectId ? projectName[e.projectId] || '未分類專案' : '未歸專案'}/${e.date || '無日期'}`;
       const path = `${dir}/${e.id}_${String(i).padStart(2, '0')}.${extFor(m.mime)}`;
       files.push({ name: path, blob: m.blob });
-      mediaIndex.push({ id: m.id, entryId: e.id, kind: m.kind, mime: m.mime, path, size: m.size });
+      // blob 以外的欄位全部留著（tag、caption、寬高、秒數…），
+      // 少了它們，還原回來的施工照片表就沒有圖說也沒有「改正前／後」。
+      const { blob, ...meta } = m;
+      mediaIndex.push({ ...meta, path });
     }
   }
 

@@ -28,7 +28,8 @@ GitHub：`justin121710/site-log`（public）
 - **純前端 PWA、public repo、GitHub Pages、零外部相依**（連 ZIP 產生器、PNG 編碼、
   SVG path 解析都自己寫）。沒有後端、沒有帳號、沒有 build step。
 - **Gemini API key 由使用者自己貼**，存在 IndexedDB，不進備份 zip。
-- **備份 = 手動匯出 zip**，走 iOS 分享選單。刻意不做自動雲端同步，
+- **備份 = 手動匯出 zip**，設定頁的「從備份還原…」把它讀回來（合併／完全取代兩種模式，
+  匯入時使用者自己選）。走 iOS 分享選單。刻意不做自動雲端同步，
   因為 iOS 加到主畫面的 PWA 跑 OAuth 會被踢到 Safari 回不來。
   （這一條正在鬆動，見下方「待辦」。）
 - **逐字稿預設走 iOS 鍵盤聽寫**（零外流），Gemini 轉檔是可選的第二條路。
@@ -68,7 +69,9 @@ js/redact.js          代號替換與敏感詞掃描
 js/confirm-upload.js  送出前預覽（可改可取消）
 js/media.js           相機、錄音、GPS
 js/watermark.js       浮水印（只在顯示與匯出時疊，原圖永遠乾淨）
-js/zip.js             自寫 STORE-only ZIP
+js/zip.js             自寫 STORE-only ZIP（寫）
+js/unzip.js           自寫 ZIP 讀取（讀，STORE + DEFLATE，用 file.slice 不吃記憶體）
+js/restore.js         從備份 zip 還原（合併／完全取代）
 js/export.js          備份與 Markdown 匯出（build* 只打包，export* 才送出分享）
 js/export-all.js      一鍵全部匯出：報表＋備份＋Markdown 併成一批交給分享選單
 js/export-ui.js       匯出對話框 + presentReport()
@@ -108,6 +111,14 @@ tools/icon-preview.html  icon 預覽（開發用）
 - **測試連線分兩段**：先用 ListModels 驗 key（與模型無關），再驗模型。
   混在一起測會讓「模型退役」看起來像「key 壞掉」。
 - **刪掉主畫面的 PWA 會清掉所有資料**。更新 App 不需要刪，直接重開即可。
+- **`data/media-index.json` 要含 blob 以外的所有欄位**。原本只存 id/entryId/kind/mime/size，
+  還原回來的照片就沒有 `tag` 與 `caption`，施工照片表會整份沒有圖說。
+  2026-08-14 之前匯出的舊備份還原時就是這樣，救不回來。
+- **還原不能碰 `geminiApiKey`**。備份裡本來就沒有 key，還原時把本機那把刪掉
+  只會害使用者重貼一次。`restore.js` 兩種模式都會先接住再放回去。
+- **返回鍵不能用 `history.back()`**。存完記錄會把「回到那天」推進歷史，
+  back 等於再走回剛剛在編輯的頁面。改成依網址算上一層（`ui.js` 的 `setBack()`），
+  結束一個頁面時用 `location.replace()`，iOS 側滑返回才不會也掉回去。
 - **部署**：`git push` 本身就會觸發 Pages 建置，**不要再手動 POST /pages/builds**，
   兩個請求會互相取消，在 Actions 上看起來像失敗。
 
@@ -117,8 +128,8 @@ tools/icon-preview.html  icon 預覽（開發用）
 
 功能都完成並在正式網址驗證過：專案/記錄/照片/錄音/聽寫、17 項工項分類、
 缺失追蹤、六種 HTML 報表（日報、施工照片表、期間報表、缺失追蹤表、
-工項彙整、專案完整本）、備份 zip、Markdown 匯出、AI 總開關、本機日報草稿、
-一鍵全部匯出。
+工項彙整、專案完整本）、備份 zip、從備份還原、Markdown 匯出、AI 總開關、
+本機日報草稿、一鍵全部匯出。
 
 使用者的 Gemini 預付額度已用完，**目前 AI 是關閉狀態**，用純手動流程。
 

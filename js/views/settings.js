@@ -1,12 +1,15 @@
 // 設定：Gemini key／方案、逐字稿預設來源、代號對照表、敏感詞、儲存空間、備份。
 
-import { el, setTitle, field, input, toast, fmtBytes, confirmDialog, flushActiveInput } from '../ui.js';
+import {
+  el, append, setTitle, field, input, toast, fmtBytes, confirmDialog, flushActiveInput,
+} from '../ui.js';
 import { getSetting, setSetting, storageEstimate, listProjects, isPersisted } from '../db.js';
 import { refreshTierBadge } from '../app.js';
 import { DEFAULT_MODEL, FALLBACK_MODELS, testKey, listModels } from '../gemini.js';
 import { getAliases, setAliases, getExtraSensitive, setExtraSensitive } from '../redact.js';
 import { getLastBackup, BACKUP_NAG_DAYS } from '../export.js';
 import { exportDialog } from '../export-ui.js';
+import { readBackup, restoreBackup, currentCounts } from '../restore.js';
 import { icon } from '../icons.js';
 
 export default async function settings() {
@@ -317,6 +320,22 @@ export default async function settings() {
   const backupBtn = el('button', { class: 'btn block', type: 'button', text: '匯出…' });
   backupBtn.addEventListener('click', () => exportDialog({ title: '全部資料' }));
 
+  // 從備份 zip 還原。檔案選擇器不能用程式模擬點擊之外的方式叫出來，
+  // 所以按鈕按下去就是去點這個藏起來的 input。
+  const picker = el('input', {
+    type: 'file',
+    accept: '.zip,application/zip',
+    style: 'display:none',
+  });
+  picker.addEventListener('change', async () => {
+    const file = picker.files?.[0];
+    picker.value = ''; // 選同一個檔第二次也要能觸發
+    if (file) await restoreDialog(file);
+  });
+
+  const restoreBtn = el('button', { class: 'btn ghost block', type: 'button', text: '從備份還原…', style: 'margin-top:10px' });
+  restoreBtn.addEventListener('click', () => picker.click());
+
   const statusLine = !iso
     ? el('div', { class: 'notice warn' }, '還沒有備份過。')
     : el('p', { class: days >= BACKUP_NAG_DAYS ? '' : 'muted', style: 'margin:-4px 0 10px' },
@@ -326,6 +345,8 @@ export default async function settings() {
     el('h2', { text: '備份與匯出' }),
     statusLine,
     backupBtn,
+    restoreBtn,
+    picker,
     est ? el('p', { class: 'muted', style: 'margin-top:10px' },
       `已用 ${fmtBytes(est.usage)}　可用約 ${fmtBytes(est.quota)}`) : null,
     await persistenceNotice(),
@@ -351,6 +372,90 @@ export default async function settings() {
   wrap.append(wipe);
 
   return wrap;
+}
+
+/**
+ * 選好備份檔之後：先讀出來給他看清楚是哪一包，再讓他決定合併還是取代。
+ * 讀取階段不會動到任何資料，看了不對可以直接關掉。
+ */
+async function restoreDialog(file) {
+  const dlg = el('dialog');
+  const status = el('div', { class: 'muted', style: 'min-height:1.5em' }, '讀取中…');
+  const close = el('button', { class: 'btn ghost', type: 'button', text: '關閉' });
+  close.addEventListener('click', () => dlg.close());
+  const body = el('div');
+
+  dlg.append(el('div', {}, [
+    el('h2', { text: '從備份還原' }),
+    body,
+    status,
+    el('menu', {}, [close]),
+  ]));
+  document.body.append(dlg);
+  dlg.showModal();
+  dlg.addEventListener('close', () => dlg.remove(), { once: true });
+
+  let backup;
+  try {
+    backup = await readBackup(file);
+  } catch (err) {
+    status.textContent = '';
+    body.append(el('div', { class: 'notice warn' }, err.message));
+    return;
+  }
+
+  const now = await currentCounts();
+  status.textContent = '';
+  // 用 ui.js 的 append：最後那個條件式可能是 null，原生 append 會把它印成 "null"
+  append(body,
+    el('p', { class: 'muted', style: 'margin:-4px 0 10px' }, [
+      `${file.name}`,
+      backup.exportedAt ? `　匯出於 ${backup.exportedAt.slice(0, 10)}` : '',
+    ].join('')),
+    el('p', { style: 'margin:0 0 4px' },
+      `備份裡：${backup.projects.length} 個專案、${backup.entries.length} 筆記錄、${backup.media.length} 個檔案`),
+    el('p', { class: 'muted', style: 'margin:0 0 12px' },
+      `目前裝置上：${now.projects} 個專案、${now.entries} 筆記錄、${now.media} 個檔案`),
+    backup.missingMedia
+      ? el('div', { class: 'notice warn' }, `有 ${backup.missingMedia} 個檔案在 zip 裡找不到，那幾張照片或錄音救不回來。`)
+      : null,
+  );
+
+  const run = async (mode) => {
+    body.replaceChildren();
+    for (const b of [mergeBtn, replaceBtn]) b.disabled = true;
+    close.disabled = true;
+    try {
+      const r = await restoreBackup(backup, mode, (t) => { status.textContent = t; });
+      status.textContent = `完成：${r.projects} 個專案、${r.entries} 筆記錄、${r.media} 個檔案。重新載入中…`;
+      setTimeout(() => location.reload(), 1200);
+    } catch (err) {
+      close.disabled = false;
+      status.textContent = '';
+      body.append(el('div', { class: 'notice warn' }, `還原失敗：${err.message}`));
+    }
+  };
+
+  const mergeBtn = el('button', { class: 'btn block', type: 'button', text: '合併匯入（保留現有資料）' });
+  mergeBtn.addEventListener('click', () => run('merge'));
+
+  const replaceBtn = el('button', {
+    class: 'btn ghost block',
+    type: 'button',
+    text: '完全取代（先清空再匯入）',
+    style: 'margin-top:10px;color:var(--danger)',
+  });
+  replaceBtn.addEventListener('click', async () => {
+    // 這是全 App 唯一一個「按下去就把現有資料刪光」的匯入路徑，一定要再問一次
+    const ok = await confirmDialog({
+      title: '清空現在的資料再匯入？',
+      body: `目前的 ${now.projects} 個專案、${now.entries} 筆記錄、${now.media} 個檔案會先被刪掉，換成這包備份的內容。沒辦法復原。`,
+      okLabel: '清空並匯入',
+    });
+    if (ok) run('replace');
+  });
+
+  append(body, mergeBtn, replaceBtn);
 }
 
 /**
