@@ -5,15 +5,20 @@ import { searchLaws, lawPackInfo, searchSpecs, specInfo, highlight, fmtLawDate }
 import { getSetting } from '../db.js';
 import { categoryName, seedSubtags } from '../taxonomy.js';
 
+/** 下拉選單裡「只看施工綱要規範」那一項的值。用不可能跟法規名稱撞名的字串。 */
+const SPEC_ONLY = '#spec';
+
 export default async function laws() {
   setTitle('查法規');
   const wrap = el('div');
 
   const query = new URLSearchParams(location.hash.split('?')[1] || '');
-  const box = input({ placeholder: '例：保護層、動火作業、停工', value: query.get('q') || '' });
+  // 範例只放「一定查得到」的詞。拿保護層當範例是在教人踩空——
+  // 它是屬性不是工項，章名與法條裡都沒有這三個字。
+  const box = input({ placeholder: '例：鋼筋、模板、護欄', value: query.get('q') || '' });
   box.setAttribute('enterkeyhint', 'search');
 
-  const scopeSel = el('select', {}, [el('option', { value: '' }, '全部法規')]);
+  const scopeSel = el('select', {}, [el('option', { value: '' }, '全部（法規＋施工綱要規範）')]);
   const status = el('div', { class: 'muted', style: 'margin:10px 0' });
   const list = el('div');
 
@@ -35,11 +40,14 @@ export default async function laws() {
     return wrap;
   }
 
+  const spec = await specInfo().catch(() => null);
+
+  // 施工綱要規範要出現在這張清單裡。這個下拉選單就是「這裡面有什麼」的說明，
+  // 不列進來的話，除非有人告訴他，否則他不會知道規範章節也查得到。
+  if (spec) scopeSel.append(el('option', { value: SPEC_ONLY }, `施工綱要規範（${spec.count} 章）`));
   for (const l of info.laws) {
     scopeSel.append(el('option', { value: l.name }, `${l.name}（${l.count} 條）`));
   }
-
-  const spec = await specInfo().catch(() => null);
 
   // 子項表：保護層、續接位置這種「屬性」不會出現在章名裡，但它們在 App 裡
   // 本來就掛在某個工項底下。查不到時用這張表告訴他該改搜哪個詞——
@@ -52,9 +60,12 @@ export default async function laws() {
     return null;
   };
 
-  /** 施工綱要規範只有章名，查到就是告訴他「去翻哪一章」，內文要自己去工程會下載。 */
+  /**
+   * 施工綱要規範只有章名，查到就是告訴他「去翻哪一章」，內文要自己去工程會下載。
+   * @returns {Promise<number>} 命中的章數
+   */
   async function renderSpecs(q) {
-    if (!spec) return;
+    if (!spec) return 0;
     const { hits, words } = await searchSpecs(q);
 
     if (!hits.length) {
@@ -70,9 +81,9 @@ export default async function laws() {
             `施工綱要規範的章名裡沒有「${w}」，它在 App 裡屬於「${cat}」工項。`),
           again);
         list.append(card);
-        return;
+        return 0;
       }
-      return;
+      return 0;
     }
     const card = el('div', { class: 'card' });
     append(card,
@@ -93,22 +104,37 @@ export default async function laws() {
       }, '到工程會下載這幾章'),
     );
     list.append(card);
+    return hits.length;
   }
 
   const run = async () => {
     const q = box.value.trim();
+    const scope = scopeSel.value;
     list.replaceChildren();
-    if (!q) { status.textContent = `${info.laws.length} 部法規、${info.articles} 條，可離線查`; return; }
+
+    if (!q) {
+      status.textContent = `${info.laws.length} 部法規 ${info.articles} 條`
+        + (spec ? `、施工綱要規範 ${spec.count} 章` : '')
+        + '，可離線查';
+      return;
+    }
 
     status.textContent = '查詢中…';
     try {
-      const name = scopeSel.value;
-      await renderSpecs(q);
+      // 選了單一部法規時就不要再插規範章節，他已經指定要看哪一本了
+      const specCount = scope === '' || scope === SPEC_ONLY ? await renderSpecs(q) : 0;
+
+      if (scope === SPEC_ONLY) {
+        status.textContent = specCount ? `找到 ${specCount} 章` : '沒有找到，換個詞試試';
+        return;
+      }
+
       const { hits, total, words } = await searchLaws(q);
-      const shown = name ? hits.filter((h) => h.law === name) : hits;
-      status.textContent = total
+      const shown = scope ? hits.filter((h) => h.law === scope) : hits;
+      const lawPart = total
         ? `找到 ${total} 條${total > shown.length ? `，顯示 ${shown.length} 條` : ''}`
-        : '沒有找到，換個詞試試';
+        : '法規沒有找到';
+      status.textContent = specCount ? `規範 ${specCount} 章、${lawPart}` : lawPart;
 
       for (const h of shown) {
         const card = el('div', { class: 'card' });
