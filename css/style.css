@@ -191,6 +191,9 @@ body {
   border-radius: 14px;
   padding: 14px;
   margin-bottom: 12px;
+  /* 最後一道防線：卡片裡的東西再怎麼樣都不准橫向凸出去。
+     用 clip 不用 hidden——hidden 會逼另一軸也變成 auto，卡片就會多出捲軸。 */
+  overflow-x: clip;
 }
 
 .card h2 { margin: 0 0 10px; font-size: 16px; }
@@ -262,6 +265,23 @@ textarea { min-height: 120px; resize: vertical; line-height: 1.7; }
 input:focus, select:focus, textarea:focus {
   outline: 2px solid var(--accent);
   outline-offset: 1px;
+}
+
+/* iOS Safari 的日期欄位是用內部的 shadow DOM 元素決定寬度的，外面的 width:100%
+   壓不住它。中文格式「2026年8月14日」又比 2026/08/14 長一截，於是整個框凸出卡片外。
+   （值自己置中，就是它在用內容寬度撐版面的徵兆。） */
+input[type=date]::-webkit-date-and-time-value { width: 100%; text-align: left; margin: 0; }
+input[type=date]::-webkit-datetime-edit { padding: 0; }
+
+/* 只有 iOS Safari 支援 -webkit-touch-callout，拿它把修正限定在會出事的瀏覽器上，
+   桌機 Chrome 的日曆圖示就不會被 appearance 一起拿掉。 */
+@supports (-webkit-touch-callout: none) {
+  input[type=date] {
+    display: block;
+    -webkit-appearance: textfield;
+    min-width: 0;
+    max-width: 100%;
+  }
 }
 
 .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 0 10px; }
