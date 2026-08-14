@@ -13,6 +13,7 @@ const ROUTES = [
   ['/', () => import('./views/projects.js')],
   ['/settings', () => import('./views/settings.js')],
   ['/lib', () => import('./views/library.js')],
+  ['/laws', () => import('./views/laws.js')],
   ['/lib/:catId', () => import('./views/category.js')],
   ['/p/:projectId', () => import('./views/project.js')],
   ['/p/:projectId/edit', () => import('./views/project-edit.js')],
@@ -49,6 +50,7 @@ function parentOf(path, query) {
   const s = path.split('/').filter(Boolean);
 
   if (s[0] === 'lib') return '#/lib'; // /lib/:catId
+  if (s[0] === 'laws') return '#/lib'; // 查法規掛在工項分類那一側
   if (s[0] !== 'p') return '#/';
 
   const pid = s[1];
@@ -103,7 +105,7 @@ async function render() {
 
 function syncTabs(path) {
   // 設定不在底部分頁裡，它是右上角那顆，所以在設定頁時兩個分頁都不亮
-  const active = path.startsWith('/lib') ? 'lib'
+  const active = (path.startsWith('/lib') || path.startsWith('/laws')) ? 'lib'
     : path.startsWith('/settings') ? 'settings'
     : 'projects';
   for (const a of document.querySelectorAll('#tabbar a')) {

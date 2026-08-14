@@ -7,7 +7,7 @@
 //   - 圖示與 manifest 走 cache-first，它們幾乎不變，沒必要每次都連。
 //   - Gemini 的請求完全不碰 SW，離線就是離線，不要假裝有結果。
 
-const CACHE = 'site-log-v8';
+const CACHE = 'site-log-v9';
 
 const ASSETS = [
   './',
@@ -26,6 +26,11 @@ const ASSETS = [
   'js/redact.js',
   'js/media.js',
   'js/watermark.js',
+  'js/laws.js',
+  'js/views/laws.js',
+  // 法規包 421KB。跟程式一起快取，工地沒訊號才查得到——
+  // 那正是他最需要查「這件事我到底該不該擋」的時候。
+  'data/laws.json',
   'js/zip.js',
   'js/unzip.js',
   'js/restore.js',
@@ -54,8 +59,14 @@ const ASSETS = [
 self.addEventListener('install', (e) => {
   e.waitUntil((async () => {
     const cache = await caches.open(CACHE);
-    // 個別 add，某一個檔 404 不要害整包裝不起來
-    await Promise.all(ASSETS.map((u) => cache.add(u).catch((err) => console.warn('快取失敗', u, err))));
+    // 個別 add，某一個檔 404 不要害整包裝不起來。
+    // cache: 'reload' 是必要的：少了它，預快取會走瀏覽器自己的 HTTP 快取，
+    // 而 GitHub Pages 給 max-age=600——改版後最多十分鐘內裝進來的還是舊檔。
+    // 程式碼那條路有 network-first 兜底看不出來，但 data/laws.json 走 cache-first，
+    // 一裝到舊的就會一直是舊的，直到下次換 CACHE 名字。
+    await Promise.all(ASSETS.map((u) => cache
+      .add(new Request(u, { cache: 'reload' }))
+      .catch((err) => console.warn('快取失敗', u, err))));
     self.skipWaiting();
   })());
 });

@@ -226,6 +226,16 @@ export default async function entryView(params) {
   ]));
 
   // ---------- AI 整理 ----------
+
+  /** 帶著這筆記錄的關鍵詞去查法規。子項最具體，沒有子項就退回工項分類名稱。 */
+  const lawLink = () => {
+    const q = (e.subtags.length ? e.subtags : e.categoryIds.map(categoryName)).slice(0, 3).join(' ');
+    return el('a', {
+      href: `#/laws${q ? `?q=${encodeURIComponent(q)}` : ''}`,
+      class: 'btn ghost sm',
+    }, [icon('book', { size: 18 }), '查法規']);
+  };
+
   const aiBox = el('div');
   function renderAI() {
     aiBox.replaceChildren();
@@ -261,6 +271,8 @@ export default async function entryView(params) {
         el('span', { text: '我已經問過前輩／查過規範，這段內容沒問題' }),
       ]),
       el('div', { style: 'margin-top:8px' }, [noteInput]),
+      // 要寫依據的那一刻，才是他需要查法規的那一刻
+      el('div', { style: 'margin-top:8px' }, [lawLink()]),
     );
   }
   renderAI();

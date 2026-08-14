@@ -96,6 +96,7 @@ const SHAPES = {
   },
   note: { d: '<path d="M6 3.5h7.5L18 8v12.5H6z"/><path d="M13.5 3.5V8H18"/><path d="M9 12.5h6M9 16h6"/>' },
   waveform: { d: '<path d="M3.5 10.5v3M7.5 6.5v11M11.5 3.5v17M15.5 8v8M19.5 10.5v3"/>' },
+  book: { d: '<path d="M4 4.5h6a2.5 2.5 0 0 1 2 2 2.5 2.5 0 0 1 2-2h6v13h-6a2.5 2.5 0 0 0-2 2 2.5 2.5 0 0 0-2-2H4z"/><path d="M12 6.5v13"/>' },
   plus: { d: '<path d="M12 5v14M5 12h14"/>' },
   close: { d: '<path d="m6.5 6.5 11 11M17.5 6.5l-11 11"/>' },
   chevronLeft: { d: '<path d="m14.5 5-7 7 7 7"/>' },

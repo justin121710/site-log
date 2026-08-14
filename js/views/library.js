@@ -35,7 +35,12 @@ export default async function library() {
     toast(`已新增「${created.name}」`);
   });
 
-  wrap.append(addBtn, list);
+  wrap.append(
+    el('a', { href: '#/laws', class: 'btn ghost block', style: 'margin-bottom:10px' },
+      [icon('book'), '查法規']),
+    addBtn,
+    list,
+  );
 
   await renderList();
   return wrap;

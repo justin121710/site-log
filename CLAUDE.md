@@ -74,6 +74,8 @@ js/icons.js           28 個 SVG icon（currentColor，非 emoji）
 js/twzones.js         台灣 22 縣市 / 368 鄉鎮市區（內建，不打反向地理編碼 API）
 js/exif.js            從 JPEG 讀 GPS（只讀 GPS IFD）
 js/glossary.js        工地術語錯字修正（純本機）+ 餵給 AI 的提示
+js/laws.js            法規全文查詢（純查表，跟 AI 無關）
+data/laws.json        法規包：12 部、1506 條，由 tools/make-laws.mjs 產生
 js/gemini.js          Gemini 客戶端與所有 prompt、錯誤訊息對應
 js/redact.js          代號替換與敏感詞掃描
 js/confirm-upload.js  送出前預覽（可改可取消）
@@ -90,6 +92,7 @@ js/report-template.js 日報格式 + buildLocalDraft()（不用 AI 的分段）
 js/report-html.js     六種可列印 HTML 報表
 js/views/             各頁面
 tools/make-icons.mjs  從 tools/logo.svg 產生 App 圖示
+tools/make-laws.mjs   產生法規包（改完一定要 bump sw.js 的 CACHE，見下方坑）
 tools/dev-server.mjs  本機靜態伺服器
 tools/icon-preview.html  icon 預覽（開發用）
 ```
@@ -126,6 +129,15 @@ tools/icon-preview.html  icon 預覽（開發用）
   2026-08-14 之前匯出的舊備份還原時就是這樣，救不回來。
 - **還原不能碰 `geminiApiKey`**。備份裡本來就沒有 key，還原時把本機那把刪掉
   只會害使用者重貼一次。`restore.js` 兩種模式都會先接住再放回去。
+- **法規包只收「法律與命令」**。著作權法第 9 條，法律、命令、公文書不得為著作權
+  之標的，所以整包放進 public repo 沒問題。**CNS 國家標準不行**（標準檢驗局有
+  販售與授權限制），公共工程施工綱要規範的授權還沒查證，也還沒收。
+  這代表「保護層幾公分」查不到——那不在法律裡，別以為是壞掉了。
+- **更新法規包之後一定要 bump `sw.js` 的 CACHE**。`data/laws.json` 走 cache-first，
+  不像程式碼有 network-first 兜底，不換版號就會一直用舊的那包。
+- **service worker 預快取要用 `cache: 'reload'`**。少了它，install 會走瀏覽器自己的
+  HTTP 快取，而 GitHub Pages 給 max-age=600——改版後十分鐘內裝進來的還是舊檔。
+  程式碼有 network-first 看不出來，法規包會直接中獎。
 - **AI 產出一律是「・」開頭的條列**（`tidyAndExtract` 的 tidied 與日報五段都是）。
   接收端三個地方要配合：報表表格與照片圖說要 `white-space: pre-wrap`（不然 HTML 把換行
   併成一整段），Markdown 要把「・」換成「- 」（Notion 不認得「・」），
