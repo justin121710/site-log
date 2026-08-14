@@ -19,13 +19,25 @@ const REFERER = 'https://pcic.pcc.gov.tw/pwc-web/service/tec0304';
 // 分頁參數在 POST body 裡，不是 query string——query string 給了會被無視，
 // 每一頁都回同一批。currentPage 是 0 起算，perPage 吃得下大數字。
 async function fetchPage(currentPage, perPage) {
-  const res = await fetch(API, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json', Referer: REFERER },
-    body: JSON.stringify({ tecCode: '', cname: '', currentPage, perPage, sortBy: [], sortDirection: 'ASC' }),
-  });
-  if (!res.ok) throw new Error(`第 ${currentPage} 頁 HTTP ${res.status}`);
-  return res.json();
+  let lastErr;
+  for (let attempt = 1; attempt <= 3; attempt++) {
+    try {
+      const res = await fetch(API, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Referer: REFERER },
+        body: JSON.stringify({ tecCode: '', cname: '', currentPage, perPage, sortBy: [], sortDirection: 'ASC' }),
+        signal: AbortSignal.timeout(30000),
+      });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      return await res.json();
+    } catch (err) {
+      lastErr = err;
+      if (attempt < 3) await new Promise((r) => setTimeout(r, attempt * 5000));
+    }
+  }
+  // 這個站連不上境外 IP（GitHub Actions 的機器在美國），排程跑到這裡會失敗。
+  // 那不是壞掉，是這一份只能從台灣的網路更新——見 .github/workflows/update-data.yml。
+  throw new Error(`第 ${currentPage} 頁抓不到：${lastErr?.message || lastErr}`);
 }
 
 const probe = await fetchPage(0, 1);

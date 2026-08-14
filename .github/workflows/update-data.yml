@@ -32,10 +32,24 @@ jobs:
         with:
           node-version: '22'
 
-      - name: 重抓兩份資料
+      - name: 重抓法規
+        run: node tools/make-laws.mjs
+
+      # 工程會的網站連不上境外 IP（GitHub 的機器在美國，實測 connect timeout），
+      # 所以規範索引沒辦法在這裡自動更新。法規那半照樣要跑完，不能被這一步拖死。
+      # 規範改版時請從台灣的網路手動跑一次 node tools/make-specs.mjs。
+      - name: 重抓施工綱要規範（連不到就跳過）
+        id: specs
+        continue-on-error: true
+        run: node tools/make-specs.mjs
+
+      - name: 記一筆規範有沒有更新到
         run: |
-          node tools/make-laws.mjs
-          node tools/make-specs.mjs
+          if [ "${{ steps.specs.outcome }}" = "success" ]; then
+            echo "施工綱要規範：已重抓" >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "施工綱要規範：連不到工程會（境外 IP 被擋），這次沿用舊的" >> "$GITHUB_STEP_SUMMARY"
+          fi
 
       - name: 有沒有真的變動
         id: diff
