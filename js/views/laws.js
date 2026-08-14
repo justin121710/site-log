@@ -1,7 +1,10 @@
 // 法規查詢。查到的是條文原文，判斷仍然是他自己做。
 
 import { el, append, setTitle, input, toast, debounce } from '../ui.js';
-import { searchLaws, lawPackInfo, searchSpecs, specInfo, highlight, fmtLawDate } from '../laws.js';
+import {
+  searchLaws, lawPackInfo, searchSpecs, specInfo, highlight, fmtLawDate,
+  refreshLawsFromMirror, resetLawsToBundled,
+} from '../laws.js';
 import { getSetting } from '../db.js';
 import { categoryName, seedSubtags } from '../taxonomy.js';
 
@@ -166,13 +169,63 @@ export default async function laws() {
 
   await run();
 
-  // 這一段留著：法規會修訂，而過期的條文看起來一樣權威
-  wrap.append(el('div', { class: 'notice warn', style: 'margin-top:16px' },
-    `資料版本 ${fmtLawDate(info.dataDate)}。引用前請按條文下方連結核對現行條文。`));
+  // ---------- 自己更新法規 ----------
+  //
+  // 直接跟全國法規資料庫的鏡像重抓，不必等我改版部署。
+  // 施工綱要規範沒有這條路：工程會那支 API 不給 CORS，瀏覽器打不到。
+  const versionLine = el('div', { class: 'notice warn', style: 'margin-top:16px' });
+  const resetBtn = el('button', { class: 'btn ghost sm', type: 'button', style: 'margin-top:8px' },
+    '改回 App 內建的那份');
+
+  const renderVersion = (dataDate, fromDevice) => {
+    versionLine.replaceChildren();
+    append(versionLine,
+      `資料版本 ${fmtLawDate(dataDate)}${fromDevice ? '（這台裝置自己更新的）' : ''}。`
+      + '引用前請按條文下方連結核對現行條文。');
+    // 用內建版時沒有東西好還原，這顆就不要佔位置
+    resetBtn.hidden = !fromDevice;
+  };
+  renderVersion(info.dataDate, info.fromDevice);
+
+  const updateBtn = el('button', { class: 'btn ghost block', type: 'button', style: 'margin-top:10px' },
+    '更新法規資料');
+  const updateStatus = el('div', { class: 'muted', style: 'margin-top:6px;min-height:1.4em' });
+
+  updateBtn.addEventListener('click', async () => {
+    updateBtn.disabled = true;
+    const original = updateBtn.textContent;
+    try {
+      const r = await refreshLawsFromMirror((done, total, name) => {
+        updateBtn.textContent = `更新中… ${done}/${total}`;
+        updateStatus.textContent = name;
+      });
+      renderVersion(r.dataDate, true);
+      updateStatus.textContent = r.changed
+        ? `已更新到 ${fmtLawDate(r.dataDate)}：${r.laws} 部、${r.articles} 條`
+        : `已經是最新的（${fmtLawDate(r.dataDate)}）`;
+      await run();
+    } catch (err) {
+      updateStatus.textContent = `更新失敗：${err.message}`;
+    } finally {
+      updateBtn.disabled = false;
+      updateBtn.textContent = original;
+    }
+  });
+
+  resetBtn.addEventListener('click', async () => {
+    await resetLawsToBundled();
+    const fresh = await lawPackInfo();
+    renderVersion(fresh.dataDate, fresh.fromDevice);
+    updateStatus.textContent = `已改回內建版（${fmtLawDate(fresh.dataDate)}）`;
+    await run();
+  });
+
+  wrap.append(versionLine, updateBtn, updateStatus, resetBtn);
   append(wrap, el('p', { class: 'muted', style: 'margin-top:8px;font-size:12px' },
     `${info.source}。不含 CNS 國家標準。`),
   spec ? el('p', { class: 'muted', style: 'margin-top:4px;font-size:12px' },
     `施工綱要規範只有章碼與章名（${spec.count} 章，${spec.fetchedAt}），內文請到工程會下載。`
+    + '這一份只能跟著 App 改版更新，上面那顆按鈕更新的是法規。'
     + `出處：${spec.source}，${spec.license}。`) : null);
 
   return wrap;
