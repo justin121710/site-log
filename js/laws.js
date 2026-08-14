@@ -81,6 +81,49 @@ export async function searchLaws(q, { limit = 60, pcode = '' } = {}) {
   return { hits: out.slice(0, limit), total: out.length, words };
 }
 
+// ---------- 施工綱要規範章節索引 ----------
+//
+// 只有章碼與章名，沒有內文——使用者選的（見 tools/make-specs.mjs 的說明）。
+// 所以這裡是 OR 不是 AND：他打「保護層 續接」時，索引裡不會有這兩個詞，
+// 但只要有一個詞對上章名（例如「鋼筋」）就該告訴他去翻哪一章。
+
+let specPromise = null;
+
+export function loadSpecs() {
+  if (!specPromise) {
+    specPromise = fetch('data/specs.json')
+      .then((r) => {
+        if (!r.ok) throw new Error(`載不到規範索引（HTTP ${r.status}）`);
+        return r.json();
+      })
+      .catch((err) => { specPromise = null; throw err; });
+  }
+  return specPromise;
+}
+
+export async function specInfo() {
+  const p = await loadSpecs();
+  return { title: p.title, source: p.source, license: p.license, listUrl: p.listUrl, fetchedAt: p.fetchedAt, count: p.chapters.length };
+}
+
+/** @returns {Promise<{hits: object[], words: string[]}>} */
+export async function searchSpecs(q, { limit = 20 } = {}) {
+  const words = parseQuery(q);
+  if (!words.length) return { hits: [], words };
+  const pack = await loadSpecs();
+
+  const hits = [];
+  for (const c of pack.chapters) {
+    const hay = `${c.code} ${c.name}`;
+    const matched = words.filter((w) => hay.includes(w));
+    if (!matched.length) continue;
+    // 對到的詞越多、章名越短，越可能就是那一章
+    hits.push({ ...c, matched, score: matched.length * 100 - c.name.length });
+  }
+  hits.sort((a, b) => b.score - a.score);
+  return { hits: hits.slice(0, limit), words };
+}
+
 function countOf(hay, needle) {
   let n = 0;
   let i = hay.indexOf(needle);
