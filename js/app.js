@@ -116,6 +116,33 @@ function syncTabs(path) {
 
 backBtn.addEventListener('click', () => { location.hash = currentBack(); });
 
+/**
+ * 讓底部分頁列重新校正位置。
+ *
+ * iOS 的 PWA 在啟動的頭幾幀有時還沒把版面可視區的高度算完，
+ * position:fixed 的分頁列就會錨在偏高的位置，底下露出一條空白，
+ * 直到發生任何一次重排才跳回去——切一次分頁就會，所以看起來像「按一下才好」。
+ *
+ * 這裡不去猜是哪個值算錯，直接強制重排讓 WebKit 自己重新解析錨點。
+ * display 在同一幀內關掉再打開，不會真的畫出來，所以不會閃。
+ */
+function settleTabbar() {
+  const bar = document.getElementById('tabbar');
+  if (!bar) return;
+  bar.style.display = 'none';
+  void bar.offsetHeight; // 讀一次強制重排
+  bar.style.display = '';
+}
+
+// 啟動動畫、鍵盤收起、從背景切回來都可能讓可視區變動，每一種都校正一次
+for (const ev of ['pageshow', 'orientationchange', 'resize']) {
+  window.addEventListener(ev, settleTabbar);
+}
+window.visualViewport?.addEventListener('resize', settleTabbar);
+document.addEventListener('visibilitychange', () => {
+  if (!document.hidden) settleTabbar();
+});
+
 /** 頂端的方案標示。付費層與免費層在保密上差很多，所以永遠顯示著。 */
 export async function refreshTierBadge() {
   const badge = document.getElementById('tier-badge');
@@ -170,6 +197,12 @@ function paintChromeIcons() {
   }
 
   await render();
+
+  // 開機後校正三次：畫完第一幀、啟動動畫大致結束、以及慢一點的機器。
+  // 這是補償 iOS 的時序問題，成本是三次重排，看不出來也感覺不到。
+  requestAnimationFrame(settleTabbar);
+  setTimeout(settleTabbar, 300);
+  setTimeout(settleTabbar, 1200);
 })().catch((err) => {
   console.error(err);
   view.replaceChildren(el('div', { class: 'empty' }, [
