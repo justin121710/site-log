@@ -161,6 +161,28 @@ body {
   padding-bottom: var(--safe-b);
 }
 
+/*
+ * 分頁列底下再墊一塊同色的背景，往下延伸出畫面。
+ *
+ * iOS 的 PWA 剛啟動時，版面可視區的高度會少算大約一個頂部 safe-area
+ * （iPhone 上約 59pt），position:fixed 的分頁列就錨在偏高的位置，
+ * 底下露出一條深色空白，直到使用者第一次觸控才會歸位。
+ *
+ * 那個時序沒辦法用 JS 可靠地提前觸發（試過強制重排，沒用），
+ * 所以改成讓它「就算錨錯了也看不出來」：底下這塊填滿之後，
+ * 錯位時看起來只是分頁列比較高，不會變成一條浮在半空中的列。
+ */
+#tabbar::after {
+  content: '';
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  height: 120px;
+  background: var(--surface);
+  pointer-events: none;
+}
+
 #tabbar a {
   flex: 1;
   display: flex;

@@ -129,9 +129,11 @@ backBtn.addEventListener('click', () => { location.hash = currentBack(); });
 function settleTabbar() {
   const bar = document.getElementById('tabbar');
   if (!bar) return;
-  bar.style.display = 'none';
-  void bar.offsetHeight; // 讀一次強制重排
-  bar.style.display = '';
+  // 動 bottom 而不是 display：display:none 會把元素抽出繪製樹，
+  // 放回來時仍然沿用同一個錯的可視區（第一版就是這樣才沒效）。
+  // 改成隔一幀把 bottom 挪回去，強迫它重新解析一次錨點。
+  bar.style.bottom = '0.02px';
+  requestAnimationFrame(() => { bar.style.bottom = ''; });
 }
 
 // 啟動動畫、鍵盤收起、從背景切回來都可能讓可視區變動，每一種都校正一次
@@ -142,6 +144,10 @@ window.visualViewport?.addEventListener('resize', settleTabbar);
 document.addEventListener('visibilitychange', () => {
   if (!document.hidden) settleTabbar();
 });
+// 真正讓 iOS 把可視區算對的，很可能就是第一次觸控本身。
+// 那就在第一次觸控的當下也校正一次，不必等使用者剛好按到某個按鈕。
+document.addEventListener('touchstart', settleTabbar, { once: true, passive: true });
+document.addEventListener('pointerdown', settleTabbar, { once: true, passive: true });
 
 /** 頂端的方案標示。付費層與免費層在保密上差很多，所以永遠顯示著。 */
 export async function refreshTierBadge() {
