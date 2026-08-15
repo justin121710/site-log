@@ -96,19 +96,33 @@ export async function restoreBackup(backup, mode, onStep) {
   }
 
   let done = 0;
+  const failed = [];
   for (const m of backup.media) {
     const { path, ...row } = m;
-    row.blob = await backup.zip.blob(path, row.mime || '');
-    row.size = row.blob.size;
-    await put('media', row);
-    if (++done % 20 === 0) onStep?.(`寫入照片與錄音… ${done}/${backup.media.length}`);
+    try {
+      const sliced = await backup.zip.blob(path, row.mime || '');
+      // 一定要把位元組讀出來重新包一個 Blob。
+      // zip.blob() 給的是 file.slice() 切出來的、還指向使用者選的那個檔案；
+      // Safari 把這種「檔案支撐的 Blob」寫進 IndexedDB 會失敗，
+      // 而且失敗時機在寫入那一刻，錯誤訊息看不出跟 slice 有關。
+      const bytes = await sliced.arrayBuffer();
+      if (!bytes.byteLength) throw new Error('讀出來是空的');
+      row.blob = new Blob([bytes], { type: row.mime || 'application/octet-stream' });
+      row.size = row.blob.size;
+      await put('media', row);
+    } catch (err) {
+      // 一張壞掉不該讓整批還原失敗——其他照片與所有文字資料都該進得去
+      failed.push({ path, reason: err?.message || String(err) });
+    }
+    if (++done % 10 === 0) onStep?.(`寫入照片與錄音… ${done}/${backup.media.length}`);
   }
 
   return {
     projects: backup.projects.length,
     entries: backup.entries.length,
-    media: backup.media.length,
+    media: backup.media.length - failed.length,
     missingMedia: backup.missingMedia,
+    failed,
   };
 }
 

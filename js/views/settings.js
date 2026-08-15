@@ -438,6 +438,21 @@ async function restoreDialog(file) {
     close.disabled = true;
     try {
       const r = await restoreBackup(backup, mode, (t) => { status.textContent = t; });
+      if (r.failed?.length) {
+        // 有東西沒進去就要講清楚是哪些、為什麼，不能只說「完成」
+        close.disabled = false;
+        status.textContent = '';
+        append(body,
+          el('div', { class: 'notice warn' }, [
+            el('strong', { text: `${r.failed.length} 個檔案還原失敗` }),
+            el('div', {}, `其餘 ${r.media} 個檔案與所有文字資料已經進去了。`),
+            el('div', { class: 'muted', style: 'margin-top:6px;font-size:12px' },
+              r.failed.slice(0, 3).map((f) => `${f.path.split('/').pop()}：${f.reason}`).join('\n')),
+          ]),
+          el('div', { class: 'muted', style: 'margin-top:8px' }, '重新載入後就會看到已經還原的部分。'));
+        setTimeout(() => location.reload(), 6000);
+        return;
+      }
       status.textContent = `完成：${r.projects} 個專案、${r.entries} 筆記錄、${r.media} 個檔案。重新載入中…`;
       setTimeout(() => location.reload(), 1200);
     } catch (err) {
