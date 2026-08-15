@@ -3,7 +3,7 @@
 import { el, append, setTitle, input, toast, debounce } from '../ui.js';
 import {
   searchLaws, lawPackInfo, searchSpecs, specInfo, highlight, fmtLawDate,
-  refreshLawsFromMirror, resetLawsToBundled,
+  refreshLawsFromMirror, resetLawsToBundled, loadLaws, loadSpecs,
 } from '../laws.js';
 import { getSetting } from '../db.js';
 import { categoryName, seedSubtags } from '../taxonomy.js';
@@ -126,15 +126,116 @@ export default async function laws() {
     return hits.length;
   }
 
+  // ---------- 瀏覽模式（搜尋框空著的時候）----------
+
+  /** 全部：先給一張目錄，點哪一本就進去翻哪一本。 */
+  function renderIndex() {
+    status.textContent = `${info.laws.length} 部法規 ${info.articles} 條`
+      + (spec ? `、施工綱要規範 ${spec.count} 章` : '') + '，可離線查';
+
+    const pick = (value, title, meta) => {
+      const card = el('button', {
+        class: 'card',
+        type: 'button',
+        style: 'display:block;width:100%;text-align:left;border-color:var(--line);cursor:pointer',
+      });
+      append(card,
+        el('div', { class: 'row', style: 'gap:8px' }, [
+          el('strong', { text: title }),
+          el('span', { class: 'spacer' }),
+          el('span', { class: 'muted', style: 'font-size:12px', text: meta }),
+        ]));
+      card.addEventListener('click', () => { scopeSel.value = value; run(); });
+      return card;
+    };
+
+    if (spec) list.append(pick(SPEC_ONLY, '施工綱要規範', `${spec.count} 章`));
+    for (const l of info.laws) {
+      list.append(pick(l.name, l.name, `${l.count} 條・修正 ${fmtLawDate(l.updated)}`));
+    }
+  }
+
+  /** 施工綱要規範：315 章全部列出來，依章碼前兩碼分段，方便用眼睛掃。 */
+  async function renderAllSpecs() {
+    const pack = await loadSpecs();
+    status.textContent = `施工綱要規範 ${pack.chapters.length} 章`;
+    let division = '';
+    const card = el('div', { class: 'card' });
+    for (const c of pack.chapters) {
+      const d = c.code.slice(0, 2);
+      if (d !== division) {
+        division = d;
+        card.append(el('div', {
+          class: 'muted',
+          style: 'font-size:12px;font-weight:700;margin:12px 0 4px;padding-top:8px;border-top:1px solid var(--line)',
+        }, `${d} 開頭`));
+      }
+      card.append(el('div', { class: 'row', style: 'gap:10px;padding:4px 0' }, [
+        el('code', { style: 'font-weight:700;min-width:4.2em' }, c.code),
+        el('span', {}, c.name),
+        el('span', { class: 'spacer' }),
+        c.ver ? el('span', { class: 'muted', style: 'font-size:12px', text: c.ver }) : null,
+      ]));
+    }
+    card.append(el('a', {
+      href: pack.listUrl, target: '_blank', rel: 'noopener',
+      class: 'btn ghost sm', style: 'margin-top:12px',
+    }, '到工程會下載'));
+    list.append(card);
+  }
+
+  /** 單一部法規：依編章節分段，條號點開才看全文，不然一次幾百條太長。 */
+  async function renderOneLaw(name) {
+    const pack = await loadLaws();
+    const law = pack.laws.find((l) => l.name === name);
+    if (!law) { status.textContent = '找不到這部法規'; return; }
+    status.textContent = `${law.name} ${law.articles.length} 條・修正 ${fmtLawDate(law.updated)}`;
+
+    let chapter = null;
+    const card = el('div', { class: 'card' });
+    for (const a of law.articles) {
+      if (a.ch && a.ch !== chapter) {
+        chapter = a.ch;
+        card.append(el('div', {
+          class: 'muted',
+          style: 'font-size:12px;font-weight:700;margin:12px 0 4px;padding-top:8px;border-top:1px solid var(--line)',
+        }, chapter));
+      }
+      const d = el('details', { style: 'padding:3px 0' });
+      d.append(
+        el('summary', { style: 'cursor:pointer;font-weight:600' }, a.no),
+        el('div', { style: 'white-space:pre-wrap;line-height:1.75;margin-top:4px' }, a.text),
+      );
+      card.append(d);
+    }
+    card.append(el('a', {
+      href: law.url, target: '_blank', rel: 'noopener',
+      class: 'btn ghost sm', style: 'margin-top:12px',
+    }, '到全國法規資料庫核對'));
+    list.append(card);
+  }
+
+  async function renderBrowse(scope) {
+    try {
+      if (scope === SPEC_ONLY) return await renderAllSpecs();
+      if (scope) return await renderOneLaw(scope);
+      return renderIndex();
+    } catch (err) {
+      status.textContent = '';
+      list.append(el('div', { class: 'notice warn' }, err.message));
+      return undefined;
+    }
+  }
+
   const run = async () => {
     const q = box.value.trim();
     const scope = scopeSel.value;
     list.replaceChildren();
 
+    // 沒打字就是「翻」，不是「查」。工具書要能直接翻找——
+    // 不一定每次都知道自己要找什麼，有時候是看到章名才想起來。
     if (!q) {
-      status.textContent = `${info.laws.length} 部法規 ${info.articles} 條`
-        + (spec ? `、施工綱要規範 ${spec.count} 章` : '')
-        + '，可離線查';
+      await renderBrowse(scope);
       return;
     }
 
