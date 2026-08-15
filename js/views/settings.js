@@ -4,7 +4,7 @@ import {
   el, append, setTitle, field, input, toast, fmtBytes, confirmDialog, flushActiveInput,
 } from '../ui.js';
 import { getSetting, setSetting, storageEstimate, listProjects, isPersisted } from '../db.js';
-import { refreshTierBadge } from '../app.js';
+import { refreshTierBadge, viewportLog } from '../app.js';
 import { DEFAULT_MODEL, FALLBACK_MODELS, testKey, listModels } from '../gemini.js';
 import { getAliases, setAliases, getExtraSensitive, setExtraSensitive } from '../redact.js';
 import { getLastBackup, BACKUP_NAG_DAYS } from '../export.js';
@@ -352,6 +352,7 @@ export default async function settings() {
     // 版本編號。修完一個 bug 之後要能一眼確認手機上跑的到底是不是新版，
     // 不然「還是壞的」跟「還沒更新到」分不出來。
     await versionLine(),
+    viewportDiagnostics(),
     await persistenceNotice(),
   ]));
 
@@ -375,6 +376,42 @@ export default async function settings() {
   wrap.append(wipe);
 
   return wrap;
+}
+
+/**
+ * 可視區數字。分頁列在啟動時錨在偏高的位置，改了兩版都沒中，
+ * 所以先把裝置實際量到的數字攤出來，不要再靠猜的。
+ * 這一段查完就會拿掉。
+ */
+function viewportDiagnostics() {
+  const fmt = (m) => (m
+    ? `視窗 ${m.innerHeight} / 螢幕 ${m.screenHeight} / 可視 ${m.visualViewport}`
+      + ` / 上緣留白 ${m.insetTop} / 下緣留白 ${m.insetBottom}`
+      + ` / 分頁列底 ${m.tabbarBottom}`
+    : '（還沒量到）');
+
+  const box = el('details', { style: 'margin-top:10px' }, [
+    el('summary', { class: 'muted', style: 'font-size:12px;cursor:pointer' }, '版面診斷'),
+  ]);
+  const body = el('div', { class: 'muted', style: 'font-size:12px;line-height:1.9;margin-top:6px' });
+  append(body,
+    el('div', {}, `啟動當下：${fmt(viewportLog.boot)}`),
+    el('div', {}, `觸控之後：${fmt(viewportLog.afterTouch)}`),
+    el('div', {}, `standalone：${viewportLog.boot?.standalone}　dpr：${viewportLog.boot?.dpr}`));
+
+  const copy = el('button', { class: 'btn ghost sm', type: 'button', style: 'margin-top:8px' }, '複製這段');
+  copy.addEventListener('click', async () => {
+    const text = JSON.stringify(viewportLog, null, 1);
+    try {
+      await navigator.clipboard.writeText(text);
+      toast('已複製，貼給我看');
+    } catch {
+      toast('複製失敗，直接截圖給我', 4000);
+    }
+  });
+
+  box.append(body, copy);
+  return box;
 }
 
 /** 目前這台裝置上跑的是哪一版。版號就是 sw.js 的 CACHE 名稱，不用另外維護。 */
