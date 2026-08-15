@@ -81,6 +81,7 @@ js/icons.js           28 個 SVG icon（currentColor，非 emoji）
 js/twzones.js         台灣 22 縣市 / 368 鄉鎮市區（內建，不打反向地理編碼 API）
 js/exif.js            從 JPEG 讀 GPS（只讀 GPS IFD）
 js/glossary.js        工地術語錯字修正（純本機）+ 餵給 AI 的提示
+js/search.js          跨專案全文搜尋（純本機掃字串，不建索引）
 js/laws.js            法規全文查詢（純查表，跟 AI 無關）
 data/laws.json        法規包：12 部、1506 條，由 tools/make-laws.mjs 產生
 data/specs.json       施工綱要規範章節索引：315 章（只有章碼章名，沒有內文）
@@ -202,7 +203,7 @@ tools/icon-preview.html  icon 預覽（開發用）
 功能都完成並在正式網址驗證過：專案/記錄/照片/錄音/聽寫、17 項工項分類、
 缺失追蹤、六種 HTML 報表（日報、施工照片表、期間報表、缺失追蹤表、
 工項彙整、專案完整本）、備份 zip、從備份還原、Markdown 匯出、AI 總開關、
-本機日報草稿、一鍵全部匯出。
+本機日報草稿、一鍵全部匯出、法規與規範查詢、跨專案全文搜尋。
 
 使用者的 Gemini 預付額度已用完，**目前 AI 是關閉狀態**，用純手動流程。
 

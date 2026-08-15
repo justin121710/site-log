@@ -24,6 +24,8 @@ export default async function projects() {
   }
 
   wrap.append(
+    el('a', { href: '#/search', class: 'btn ghost block', style: 'margin-bottom:10px' },
+      [icon('search'), '搜尋所有記錄']),
     el('a', { href: '#/p/new/edit', class: 'btn block', style: 'margin-bottom:14px' },
       [icon('plus'), '新增專案'])
   );

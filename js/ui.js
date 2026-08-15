@@ -78,6 +78,40 @@ export function confirmDialog({ title, body = '', okLabel = '確定', danger = t
   });
 }
 
+// ---------- 搜尋 ----------
+
+/** 查詢字串切成關鍵詞。空白或頓號分隔，全部都要命中（AND）。 */
+export function parseQuery(q) {
+  return (q || '').trim().split(/[\s、,，]+/).filter(Boolean).slice(0, 5);
+}
+
+export function escapeRe(s) {
+  return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
+/**
+ * 把命中的關鍵詞包成 <mark>。回傳 DocumentFragment，
+ * 不用 innerHTML——被搜尋的內容可能來自法規、也可能是使用者自己打的字，
+ * 都不該有機會變成標記。
+ */
+export function highlight(text, words) {
+  const frag = document.createDocumentFragment();
+  const list = (words || []).filter(Boolean);
+  if (!list.length) { frag.append(text); return frag; }
+
+  const re = new RegExp(list.map(escapeRe).join('|'), 'g');
+  let last = 0;
+  for (const m of String(text).matchAll(re)) {
+    if (m.index > last) frag.append(text.slice(last, m.index));
+    const mark = document.createElement('mark');
+    mark.textContent = m[0];
+    frag.append(mark);
+    last = m.index + m[0].length;
+  }
+  if (last < text.length) frag.append(text.slice(last));
+  return frag;
+}
+
 // ---------- 日期時間 ----------
 
 /** 本地時區的 YYYY-MM-DD。不能用 toISOString()，那是 UTC，跨日會錯一天。 */

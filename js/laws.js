@@ -11,6 +11,10 @@
 // **法規會修訂。** 所以每一條都帶著它的最新異動日期，畫面上永遠顯示，
 // 並且附官方連結讓他核對。過期的條文比查不到更危險，因為它一樣權威。
 
+import { highlight, parseQuery } from './ui.js';
+
+export { highlight };
+
 const PACK_URL = 'data/laws.json';
 
 // 全國法規資料庫的鏡像。實測這個網域有給 CORS，所以手機上可以直接重抓，
@@ -139,11 +143,6 @@ export async function lawPackInfo() {
   };
 }
 
-/** 查詢字串切成關鍵詞。空白分隔，全部都要命中（AND）。 */
-export function parseQuery(q) {
-  return (q || '').trim().split(/[\s、,，]+/).filter(Boolean).slice(0, 5);
-}
-
 /**
  * @param {string} q
  * @param {{ limit?: number, pcode?: string }} opts
@@ -226,31 +225,6 @@ function countOf(hay, needle) {
   let i = hay.indexOf(needle);
   while (i !== -1) { n++; i = hay.indexOf(needle, i + needle.length); }
   return n;
-}
-
-/**
- * 把命中的關鍵詞包成 <mark>。回傳 DocumentFragment，
- * 不用 innerHTML——條文是外部資料，不該有機會變成標記。
- */
-export function highlight(text, words) {
-  const frag = document.createDocumentFragment();
-  if (!words.length) { frag.append(text); return frag; }
-
-  const re = new RegExp(words.map(escapeRe).join('|'), 'g');
-  let last = 0;
-  for (const m of text.matchAll(re)) {
-    if (m.index > last) frag.append(text.slice(last, m.index));
-    const mark = document.createElement('mark');
-    mark.textContent = m[0];
-    frag.append(mark);
-    last = m.index + m[0].length;
-  }
-  if (last < text.length) frag.append(text.slice(last));
-  return frag;
-}
-
-function escapeRe(s) {
-  return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 }
 
 /** 20251219 → 2025-12-19 */

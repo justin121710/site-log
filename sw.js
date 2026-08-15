@@ -7,7 +7,7 @@
 //   - 圖示與 manifest 走 cache-first，它們幾乎不變，沒必要每次都連。
 //   - Gemini 的請求完全不碰 SW，離線就是離線，不要假裝有結果。
 
-const CACHE = 'site-log-v22';
+const CACHE = 'site-log-v23';
 
 const ASSETS = [
   './',
@@ -26,6 +26,8 @@ const ASSETS = [
   'js/redact.js',
   'js/media.js',
   'js/watermark.js',
+  'js/search.js',
+  'js/views/search.js',
   'js/laws.js',
   'js/views/laws.js',
   // 法規包 421KB。跟程式一起快取，工地沒訊號才查得到——

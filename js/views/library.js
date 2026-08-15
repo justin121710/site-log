@@ -36,6 +36,8 @@ export default async function library() {
   });
 
   wrap.append(
+    el('a', { href: '#/search', class: 'btn ghost block', style: 'margin-bottom:10px' },
+      [icon('search'), '搜尋所有記錄']),
     el('a', { href: '#/laws', class: 'btn ghost block', style: 'margin-bottom:10px' },
       [icon('book'), '查法規']),
     addBtn,

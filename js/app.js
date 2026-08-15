@@ -12,6 +12,7 @@ const backBtn = document.getElementById('btn-back');
 const ROUTES = [
   ['/', () => import('./views/projects.js')],
   ['/settings', () => import('./views/settings.js')],
+  ['/search', () => import('./views/search.js')],
   ['/lib', () => import('./views/library.js')],
   ['/laws', () => import('./views/laws.js')],
   ['/lib/:catId', () => import('./views/category.js')],
@@ -51,6 +52,7 @@ function parentOf(path, query) {
 
   if (s[0] === 'lib') return '#/lib'; // /lib/:catId
   if (s[0] === 'laws') return '#/lib'; // 查法規掛在工項分類那一側
+  if (s[0] === 'search') return '#/';
   if (s[0] !== 'p') return '#/';
 
   const pid = s[1];
