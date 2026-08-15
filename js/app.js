@@ -116,79 +116,6 @@ function syncTabs(path) {
 
 backBtn.addEventListener('click', () => { location.hash = currentBack(); });
 
-/**
- * 讓底部分頁列重新校正位置。
- *
- * 注意：這**不是**啟動時分頁列浮高的解法（那是 web view 比螢幕矮造成的，
- * 已改用 index.html 的 status-bar-style 處理）。留著是為了鍵盤收起、
- * 轉向、從背景切回來這些真的會讓可視區改變的情況。
- */
-/**
- * 量一次目前的可視區數字。
- *
- * 分頁列在啟動時錨在偏高的位置，改了兩版都沒用，連「在分頁列底下墊同色背景」
- * 都沒效——那代表那條空白很可能根本不在網頁裡，而是 web view 本身比螢幕矮，
- * 露出底下 App 的背景。頁面內的 CSS 碰不到那塊。
- *
- * 與其再猜第四次，不如把啟動當下與第一次觸控之後的數字都留著，
- * 讓裝置自己講。顯示在設定頁最下面。
- */
-function snapshotViewport() {
-  const probe = document.createElement('div');
-  probe.style.cssText = 'position:fixed;top:0;left:0;width:0;height:0;visibility:hidden;'
-    + 'padding-top:env(safe-area-inset-top);padding-bottom:env(safe-area-inset-bottom)';
-  document.body.append(probe);
-  const cs = getComputedStyle(probe);
-  const insetTop = cs.paddingTop;
-  const insetBottom = cs.paddingBottom;
-  probe.remove();
-
-  const bar = document.getElementById('tabbar');
-  return {
-    innerHeight: window.innerHeight,
-    screenHeight: window.screen?.height ?? 0,
-    visualViewport: Math.round(window.visualViewport?.height ?? 0),
-    insetTop,
-    insetBottom,
-    tabbarBottom: bar ? Math.round(bar.getBoundingClientRect().bottom) : null,
-    dpr: window.devicePixelRatio,
-    standalone: !!(window.navigator.standalone ?? matchMedia('(display-mode: standalone)').matches),
-  };
-}
-
-export const viewportLog = { boot: null, afterTouch: null };
-
-function settleTabbar() {
-  const bar = document.getElementById('tabbar');
-  if (!bar) return;
-  // 動 bottom 而不是 display：display:none 會把元素抽出繪製樹，
-  // 放回來時仍然沿用同一個錯的可視區（第一版就是這樣才沒效）。
-  // 改成隔一幀把 bottom 挪回去，強迫它重新解析一次錨點。
-  bar.style.bottom = '0.02px';
-  requestAnimationFrame(() => { bar.style.bottom = ''; });
-}
-
-// 啟動動畫、鍵盤收起、從背景切回來都可能讓可視區變動，每一種都校正一次
-for (const ev of ['pageshow', 'orientationchange', 'resize']) {
-  window.addEventListener(ev, settleTabbar);
-}
-window.visualViewport?.addEventListener('resize', settleTabbar);
-document.addEventListener('visibilitychange', () => {
-  if (!document.hidden) settleTabbar();
-});
-// 真正讓 iOS 把可視區算對的，很可能就是第一次觸控本身。
-// 那就在第一次觸控的當下也校正一次，不必等使用者剛好按到某個按鈕。
-document.addEventListener('touchstart', onFirstTouch, { once: true, passive: true });
-document.addEventListener('pointerdown', onFirstTouch, { once: true, passive: true });
-
-function onFirstTouch() {
-  settleTabbar();
-  // 觸控之後量一次，跟啟動當下的數字對照，就知道到底是什麼變了
-  if (!viewportLog.afterTouch) {
-    setTimeout(() => { viewportLog.afterTouch = snapshotViewport(); }, 250);
-  }
-}
-
 /** 頂端的方案標示。付費層與免費層在保密上差很多，所以永遠顯示著。 */
 export async function refreshTierBadge() {
   const badge = document.getElementById('tier-badge');
@@ -243,15 +170,6 @@ function paintChromeIcons() {
   }
 
   await render();
-
-  // 開機後校正三次：畫完第一幀、啟動動畫大致結束、以及慢一點的機器。
-  // 這是補償 iOS 的時序問題，成本是三次重排，看不出來也感覺不到。
-  requestAnimationFrame(() => {
-    settleTabbar();
-    viewportLog.boot = snapshotViewport(); // 觸控之前的數字，這才是關鍵那一組
-  });
-  setTimeout(settleTabbar, 300);
-  setTimeout(settleTabbar, 1200);
 })().catch((err) => {
   console.error(err);
   view.replaceChildren(el('div', { class: 'empty' }, [

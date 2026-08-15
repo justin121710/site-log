@@ -170,6 +170,18 @@ tools/icon-preview.html  icon 預覽（開發用）
   接收端三個地方要配合：報表表格與照片圖說要 `white-space: pre-wrap`（不然 HTML 把換行
   併成一整段），Markdown 要把「・」換成「- 」（Notion 不認得「・」），
   `buildLocalDraft()` 要**逐行**分派到五段——整筆丟的話同樣的八行會在三段各印一次。
+- **iOS PWA 底部有一條 62pt 的死區，只有重新加到主畫面才會消失**（2026-08-15 查清）。
+  症狀：啟動後底部分頁列上方有色差，碰螢幕一下才「歸位」。實機量到的數字：
+  螢幕 874、視窗 812、上緣 safe-area 62、下緣 34，而 `874 − 812 = 62`——
+  iOS 用「螢幕高減狀態列」算 web view 高度，卻同時又套 `viewport-fit=cover` 的
+  inset，於是網頁靠上對齊、底部空出一條 web view 以外的死區。
+  啟動當下與觸控之後兩組數字**完全相同**，證明錯位不在網頁座標系裡。
+  - **修法已經在 `index.html`**：`apple-mobile-web-app-status-bar-style` 從
+    `black-translucent` 改成 `black`。但**那個 meta 是 iOS 在「加到主畫面」當下
+    讀取並寫死的**，已經裝好的 PWA 不會因為伺服器上的 HTML 改了就生效。
+    使用者下次重裝（換手機、或先匯出備份再重加）時會自動好。
+  - **試過但無效，不要再試**：強制重排／挪 `bottom` 校正、`#tabbar::after` 墊同色
+    背景、把 `html` 的畫布染成分頁列顏色。那塊是 iOS 自己畫的，網頁碰不到。
 - **返回鍵不能用 `history.back()`**。存完記錄會把「回到那天」推進歷史，
   back 等於再走回剛剛在編輯的頁面。改成依網址算上一層（`ui.js` 的 `setBack()`），
   結束一個頁面時用 `location.replace()`，iOS 側滑返回才不會也掉回去。
