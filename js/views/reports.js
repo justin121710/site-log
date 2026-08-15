@@ -83,7 +83,7 @@ export default async function reports({ projectId }) {
     return b;
   });
 
-  const periodBtn = el('button', { class: 'btn block', type: 'button', text: '產生期間報表' });
+  const periodBtn = el('button', { class: 'btn block', type: 'button', text: '產生期間報表（.html）' });
   periodBtn.addEventListener('click', () => run(periodBtn, async () => {
     const from = fromInput.value;
     const to = toInput.value;
@@ -104,7 +104,7 @@ export default async function reports({ projectId }) {
 
   // ---------- 缺失追蹤表 ----------
   const groups = await groupDefects(projectId);
-  const defectBtn = el('button', { class: 'btn block', type: 'button', text: '產生缺失追蹤表' });
+  const defectBtn = el('button', { class: 'btn block', type: 'button', text: '產生缺失追蹤表（.html）' });
   defectBtn.addEventListener('click', () => run(defectBtn, async () =>
     buildDefectReportHtml({ project, groups: await groupDefects(projectId), perPage, withPhotos })));
 
@@ -122,7 +122,7 @@ export default async function reports({ projectId }) {
   const catSel = el('select', {}, CATEGORIES.map((c) => el('option', { value: c.id }, c.name)));
   const crossBox = el('input', { type: 'checkbox', style: 'width:22px;min-height:22px;flex:none' });
 
-  const catBtn = el('button', { class: 'btn block', type: 'button', text: '產生工項彙整' });
+  const catBtn = el('button', { class: 'btn block', type: 'button', text: '產生工項彙整（.html）' });
   catBtn.addEventListener('click', () => run(catBtn, async () => {
     const catId = catSel.value;
     const all = await listEntriesByCategory(catId);
@@ -144,7 +144,7 @@ export default async function reports({ projectId }) {
   ]));
 
   // ---------- 專案完整本 ----------
-  const bookBtn = el('button', { class: 'btn block', type: 'button', text: '產生完整本' });
+  const bookBtn = el('button', { class: 'btn block', type: 'button', text: '產生完整本（.html）' });
   bookBtn.addEventListener('click', () => run(bookBtn, async () =>
     buildProjectBookHtml({
       project, entries: await listEntries(projectId), days: await daysMap(projectId), perPage, withPhotos,

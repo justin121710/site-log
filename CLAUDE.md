@@ -50,6 +50,13 @@ GitHub：`justin121710/site-log`（public）
     16 個是舊制名（桃園縣那批、頭份鎮、員林鎮）要對照表，金門烏坵鄉資料集沒有。
   - **不管哪個做法，都不打反向地理編碼 API**，那條界線沒有鬆動。
 
+- **Notion 只能走「匯出 zip → 手動匯入」，API 直連做不到。** 2026-08-15 實測
+  `api.notion.com` 沒有 `Access-Control-Allow-Origin`，preflight 就被擋，
+  純前端打不到（對照組 raw.githubusercontent.com 同樣是跨網域卻通）。
+  要自動同步就得架一個中介伺服器，那違反零後端。
+  Markdown 匯出的 zip **本來就含照片**（`.md` ＋ `images/`，相對路徑，
+  Notion 匯入時會一起帶進去），不需要為了 Notion 另外做什麼。
+
 ### AI 的界線（產品核心風險）
 
 使用者是新人，**最沒有能力判斷 AI 在唬爛，而監造有法律責任**。所以：

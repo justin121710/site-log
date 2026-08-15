@@ -175,7 +175,7 @@ export default async function report({ projectId, date }) {
   const currentSections = () =>
     Object.fromEntries(REPORT_SECTIONS.map((s) => [s.key, boxes[s.key].value]));
 
-  const htmlBtn = el('button', { class: 'btn', type: 'button', text: '匯出報表（可印成 PDF）' });
+  const htmlBtn = el('button', { class: 'btn', type: 'button', text: '匯出報表（.html）' });
   htmlBtn.addEventListener('click', async () => {
     flushActiveInput();
     await persist(true);
@@ -198,7 +198,7 @@ export default async function report({ projectId, date }) {
       toast(`產生失敗：${err.message}`, 5000);
     } finally {
       htmlBtn.disabled = false;
-      htmlBtn.textContent = '匯出報表（可印成 PDF）';
+      htmlBtn.textContent = '匯出報表（.html）';
     }
   });
 

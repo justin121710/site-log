@@ -99,7 +99,7 @@ export function exportDialog(scope) {
 
   // 一次做完、一次分享。按鈕名字本身就要講完它包含什麼，
   // 不然使用者在分享選單裡看到三個檔案會不知道哪個是哪個。
-  const allBtn = el('button', { class: 'btn block', type: 'button', text: '一鍵全部匯出（報表＋備份＋Markdown）' });
+  const allBtn = el('button', { class: 'btn block', type: 'button', text: '一鍵全部匯出（報表 .html ＋ 備份 .zip ＋ Markdown .zip）' });
   allBtn.addEventListener('click', () => run(allBtn, '匯出', () => exportEverything(scope, {
     onStep: (text) => { status.textContent = text; },
   })));
@@ -107,10 +107,10 @@ export function exportDialog(scope) {
   const backupBtn = el('button', { class: 'btn ghost block', type: 'button', text: '完整備份（.zip）' });
   backupBtn.addEventListener('click', () => run(backupBtn, '備份', () => exportBackup(scope)));
 
-  const mdBtn = el('button', { class: 'btn ghost block', type: 'button', text: 'Markdown（給 Notion 匯入）' });
+  const mdBtn = el('button', { class: 'btn ghost block', type: 'button', text: 'Markdown（.zip，含照片，給 Notion 匯入）' });
   mdBtn.addEventListener('click', () => run(mdBtn, '匯出', () => exportMarkdown(scope)));
 
-  const copyBtn = el('button', { class: 'btn ghost block', type: 'button', text: '複製 Markdown 文字' });
+  const copyBtn = el('button', { class: 'btn ghost block', type: 'button', text: '複製 Markdown 文字（不產生檔案）' });
   copyBtn.addEventListener('click', () => run(copyBtn, '複製', async () => {
     const text = await markdownText(scope);
     try {
