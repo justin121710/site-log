@@ -8,7 +8,16 @@
 <link rel="manifest" href="manifest.webmanifest">
 <meta name="theme-color" content="#12161c">
 <meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<!--
+  不要用 black-translucent。實機量到：螢幕 874、視窗只有 812、上緣 safe-area 62，
+  874 − 812 = 62 —— iOS 用「螢幕高減狀態列」算 web view 高度，卻同時還套用
+  viewport-fit=cover 的 inset，於是網頁靠上對齊、底部空出一條 62pt 的死區，
+  position:fixed 的分頁列就浮在那條死區上面。那塊不在網頁座標系裡，
+  頁面內的 CSS 完全碰不到（試過墊背景，無效）。
+  改成 black：web view 從狀態列下面開始並填滿到螢幕底，env(safe-area-inset-top)
+  變 0，頂端也不會再被多墊一次。深色 App 用 black 而不是 default，狀態列文字才是白的。
+-->
+<meta name="apple-mobile-web-app-status-bar-style" content="black">
 <meta name="apple-mobile-web-app-title" content="工地筆記">
 <link rel="apple-touch-icon" href="icons/icon-180.png">
 <link rel="icon" href="icons/icon-192.png">
